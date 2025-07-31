@@ -176,6 +176,9 @@ test_results.json
 *.bmp
 *.webp
 
+# Large dataset files (not needed for Streamlit Cloud deployment)
+dataset/
+
 # Logs
 *.log
 
