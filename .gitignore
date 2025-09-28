@@ -163,9 +163,6 @@ cython_debug/
 # Visual Studio Code
 .vscode/
 
-# Streamlit
-.streamlit/secrets.toml
-
 # Application specific
 expenses.json
 test_results.json
@@ -176,7 +173,7 @@ test_results.json
 *.bmp
 *.webp
 
-# Large dataset files (not needed for Streamlit Cloud deployment)
+# Large dataset files
 dataset/
 
 # Logs
