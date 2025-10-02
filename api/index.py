@@ -14,13 +14,7 @@ sys.path.insert(0, str(backend_dir))
 # Import the FastAPI app from backend
 from main import app
 
-# Vercel expects a handler function
-def handler(request, response):
-    """Vercel serverless function handler."""
-    return app(request, response)
-
-# For Vercel, we need to export the app
+# Export the app for Vercel
 # Vercel will automatically detect this as the ASGI application
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+# The variable name must be 'app' for Vercel to recognize it
+__all__ = ["app"]
