@@ -3,7 +3,10 @@
   "builds": [
     {
       "src": "api/index.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "50mb"
+      }
     }
   ],
   "routes": [
@@ -15,13 +18,5 @@
       "src": "/(.*)",
       "dest": "api/index.py"
     }
-  ],
-  "env": {
-    "GOOGLE_API_KEY": "@google_api_key"
-  },
-  "functions": {
-    "api/index.py": {
-      "maxDuration": 30
-    }
-  }
+  ]
 }

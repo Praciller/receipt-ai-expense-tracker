@@ -48,10 +48,13 @@ export function ReceiptUpload() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch("http://localhost:8000/upload-receipt", {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(
+        "https://receipt-ai-expense-tracker.vercel.app/process-receipt",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
       if (response.ok) {
         const data = await response.json();
