@@ -51,13 +51,15 @@ export function ReceiptUpload() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch(
-        "https://receipt-ai-expense-tracker.vercel.app/process-receipt",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      // Use environment variable for API URL, fallback to Railway
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL ||
+        "https://receipt-ai-expense-tracker-production.up.railway.app";
+
+      const response = await fetch(`${apiUrl}/process-receipt`, {
+        method: "POST",
+        body: formData,
+      });
 
       if (response.ok) {
         const data = await response.json();
