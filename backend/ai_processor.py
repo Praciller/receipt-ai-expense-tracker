@@ -59,17 +59,24 @@ class ReceiptAIProcessor:
         """Create an optimized prompt for receipt processing with clear instructions."""
         categories_str = ", ".join(self.get_category_list())
 
-        return f"""Extract receipt information into JSON format. Be precise with numbers and text.
+        return f"""You are a receipt OCR expert. Analyze this receipt image and extract ALL visible information into valid JSON format.
 
-EXAMPLE OUTPUT:
+CRITICAL INSTRUCTIONS:
+1. Look carefully at the image and extract EXACT text as shown
+2. Find the merchant/store name (usually at the top)
+3. Find the total amount (look for "TOTAL", "AMOUNT DUE", or largest number)
+4. Find the date (look for date format like MM/DD/YYYY or DD/MM/YYYY)
+5. Return ONLY valid JSON - no markdown, no code blocks, no extra text
+
+REQUIRED JSON FORMAT:
 {{
-    "merchant_name": "Starbucks Coffee",
-    "merchant_address": "123 Main St, City, State 12345",
-    "transaction_date": "2024-01-15",
-    "transaction_time": "14:30",
-    "total_amount": 4.75,
-    "subtotal": 4.50,
-    "tax_amount": 0.25,
+    "merchant_name": "exact store name from receipt",
+    "merchant_address": "full address if visible",
+    "transaction_date": "YYYY-MM-DD",
+    "transaction_time": "HH:MM",
+    "total_amount": 0.00,
+    "subtotal": 0.00,
+    "tax_amount": 0.00,
     "tip_amount": 0.00,
     "discount_amount": 0.00,
     "currency": "USD",
@@ -77,39 +84,40 @@ EXAMPLE OUTPUT:
     "payment_method": "Card",
     "items": [
         {{
-            "name": "Grande Latte",
+            "name": "item name",
             "quantity": 1,
-            "unit_price": 4.50,
-            "total_price": 4.50
+            "unit_price": 0.00,
+            "total_price": 0.00
         }}
     ],
-    "receipt_number": "12345",
-    "cashier": "John",
+    "receipt_number": "receipt/invoice number",
+    "cashier": "cashier name if visible",
     "confidence": 0.95,
-    "extraction_notes": "Clear receipt, all information visible"
+    "extraction_notes": "any notes about extraction quality"
 }}
 
-RULES:
-1. Extract exact text as shown on receipt
-2. Use numbers only for amounts (no currency symbols)
-3. Date format: YYYY-MM-DD, Time format: HH:MM
-4. Category must be one of: {categories_str}
-5. If information is unclear or missing, use null
-6. Confidence: 0.9+ for clear receipts, 0.7+ for readable, 0.5+ for unclear
-7. For items: if not itemized, create one item with total amount
-8. Currency: detect from symbols ($=USD, €=EUR, £=GBP, ¥=JPY, etc.)
+EXTRACTION RULES:
+1. merchant_name: REQUIRED - Extract exact business name from top of receipt
+2. total_amount: REQUIRED - Find the final total (look for "TOTAL", "AMOUNT", "BALANCE DUE")
+3. transaction_date: REQUIRED - Convert any date format to YYYY-MM-DD
+4. currency: Detect from symbols ($=USD, €=EUR, £=GBP, ¥=JPY, ₹=INR)
+5. category: Choose ONE from: {categories_str}
+6. confidence: 0.9+ for clear, 0.7+ for readable, 0.5+ for unclear, 0.3+ for very unclear
+7. Use null for missing fields, never leave fields empty
+8. Numbers: Use decimal format (e.g., 12.50 not $12.50)
+9. If no itemized list, create one item with the total amount
 
-CATEGORY GUIDELINES:
-- Food: Restaurants, grocery stores, cafes, food delivery
-- Transport: Gas stations, parking, public transport, car services
-- Shopping: Retail stores, clothing, electronics, general merchandise
-- Entertainment: Movies, games, events, recreational activities
-- Healthcare: Pharmacies, medical services, health products
-- Utilities: Phone, internet, electricity, water bills
-- Education: Books, courses, educational materials
-- Other: Services, fees, unclear categories
+CATEGORY SELECTION:
+- Food: Restaurants, grocery stores, cafes, bakeries, food delivery
+- Transport: Gas stations, parking, taxis, public transport, car services
+- Shopping: Retail stores, clothing, electronics, home goods, general merchandise
+- Entertainment: Movies, theaters, games, events, concerts, recreational activities
+- Healthcare: Pharmacies, hospitals, clinics, medical services, health products
+- Utilities: Phone bills, internet, electricity, water, gas bills
+- Education: Books, courses, tuition, educational materials, training
+- Other: Services, fees, miscellaneous, unclear categories
 
-Return only valid JSON."""
+IMPORTANT: Return ONLY the JSON object. Do not include markdown code blocks, explanations, or any other text.
 
     def create_simple_prompt(self) -> str:
         """Create a simpler prompt for basic receipt processing."""
@@ -132,6 +140,7 @@ Be accurate with merchant name and total amount. Use current date if date unclea
         """Process receipt image and extract structured data with retry logic."""
         max_retries = 3
         last_error = None
+        response_text = ""
 
         for attempt in range(max_retries):
             try:
@@ -144,13 +153,25 @@ Be accurate with merchant name and total amount. Use current date if date unclea
                 processed_image = self._optimize_image_for_ocr(image)
 
                 # Generate content using Gemini with retry
+                logger.info("Calling Gemini API...")
                 response = self.model.generate_content([prompt, processed_image])
 
+                # Check for blocked responses
+                if hasattr(response, 'prompt_feedback'):
+                    logger.info(f"Prompt feedback: {response.prompt_feedback}")
+
+                if not response or not hasattr(response, 'text'):
+                    error_msg = "No response from AI model"
+                    if hasattr(response, 'prompt_feedback'):
+                        error_msg += f" - Feedback: {response.prompt_feedback}"
+                    raise ValueError(error_msg)
+
                 if not response.text:
-                    raise ValueError("Empty response from AI model")
+                    raise ValueError("Empty response text from AI model")
 
                 response_text = response.text.strip()
-                logger.info(f"AI Response length: {len(response_text)} characters")
+                logger.info(f"AI Response received: {len(response_text)} characters")
+                logger.debug(f"AI Response preview: {response_text[:200]}...")
 
                 # Clean up response text
                 response_text = self._clean_response_text(response_text)
@@ -170,6 +191,7 @@ Be accurate with merchant name and total amount. Use current date if date unclea
             except json.JSONDecodeError as e:
                 last_error = e
                 logger.warning(f"JSON parsing error on attempt {attempt + 1}: {e}")
+                logger.debug(f"Failed to parse: {response_text[:500]}")
                 if attempt < max_retries - 1:
                     continue
                 # Final attempt: try to extract JSON from malformed response
@@ -177,12 +199,12 @@ Be accurate with merchant name and total amount. Use current date if date unclea
 
             except Exception as e:
                 last_error = e
-                logger.error(f"Error processing receipt on attempt {attempt + 1}: {e}")
+                logger.error(f"Error processing receipt on attempt {attempt + 1}: {type(e).__name__}: {e}", exc_info=True)
                 if attempt < max_retries - 1:
                     continue
 
         # If all retries failed, return fallback result
-        logger.error(f"All processing attempts failed. Last error: {last_error}")
+        logger.error(f"All processing attempts failed. Last error: {type(last_error).__name__}: {last_error}")
         return self._create_fallback_result(str(last_error))
 
     def _optimize_image_for_ocr(self, image: Image.Image) -> Image.Image:
