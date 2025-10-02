@@ -2,21 +2,25 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/main.py",
+      "src": "api/index.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "api/main.py"
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "api/index.py"
     }
   ],
   "env": {
-    "PYTHONPATH": "."
+    "GOOGLE_API_KEY": "@google_api_key"
   },
   "functions": {
-    "api/main.py": {
+    "api/index.py": {
       "maxDuration": 30
     }
   }
