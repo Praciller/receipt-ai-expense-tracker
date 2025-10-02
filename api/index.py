@@ -1,64 +1,97 @@
 """
-Vercel serverless function wrapper for FastAPI backend.
-This file adapts the FastAPI application to run as a Vercel serverless function.
+Vercel serverless function for Receipt AI API.
+Simple HTTP handler that works with Vercel's Python runtime.
 """
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from http.server import BaseHTTPRequestHandler
+import json
 import os
 import sys
 from pathlib import Path
+from urllib.parse import urlparse, parse_qs
 
-# Add the backend directory to Python path
-backend_dir = Path(__file__).parent.parent / "backend"
-sys.path.insert(0, str(backend_dir))
+class handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        """Handle GET requests."""
+        parsed_path = urlparse(self.path)
+        path = parsed_path.path
 
-# Create a simple test app first
-app = FastAPI(title="Receipt AI API", version="1.0.0")
+        # Set CORS headers
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', '*')
+        self.end_headers()
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://receipt-ai-expense-tracker.vercel.app",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000"
-    ],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["*"],
-)
+        if path == '/' or path == '/api':
+            response = {
+                "message": "Receipt AI API is running on Vercel!",
+                "version": "1.0.0",
+                "status": "operational"
+            }
+        elif path == '/health' or path == '/api/health':
+            response = {
+                "status": "healthy",
+                "message": "Receipt AI API is operational",
+                "categories": [
+                    "Food", "Transportation", "Shopping", "Entertainment",
+                    "Healthcare", "Utilities", "Other"
+                ]
+            }
+        else:
+            response = {"error": "Not found", "path": path}
 
-@app.get("/")
-async def root():
-    return {"message": "Receipt AI API is running on Vercel!", "version": "1.0.0"}
+        self.wfile.write(json.dumps(response).encode())
 
-@app.get("/health")
-async def health():
-    return {
-        "status": "healthy",
-        "message": "Receipt AI API is operational",
-        "categories": [
-            "Food", "Transportation", "Shopping", "Entertainment",
-            "Healthcare", "Utilities", "Other"
-        ]
-    }
+    def do_POST(self):
+        """Handle POST requests."""
+        parsed_path = urlparse(self.path)
+        path = parsed_path.path
 
-# Try to import the full backend functionality
-try:
-    from main import app as backend_app
-    # Copy routes from backend app
-    for route in backend_app.routes:
-        if hasattr(route, 'path') and route.path not in ['/', '/health']:
-            app.routes.append(route)
-except Exception as e:
-    print(f"Warning: Could not import full backend: {e}")
+        # Set CORS headers
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', '*')
+        self.end_headers()
 
-    # Add a simple process-receipt endpoint as fallback
-    @app.post("/process-receipt")
-    async def process_receipt_fallback():
-        return {
-            "error": "Backend import failed",
-            "message": "Full AI processing not available",
-            "details": str(e)
-        }
+        if path == '/process-receipt' or path == '/api/process-receipt':
+            # Try to import and use the AI processor
+            try:
+                # Add the backend directory to Python path
+                backend_dir = Path(__file__).parent.parent / "backend"
+                sys.path.insert(0, str(backend_dir))
+
+                from ai_processor import ReceiptProcessor
+
+                # Get the uploaded file data
+                content_length = int(self.headers['Content-Length'])
+                post_data = self.rfile.read(content_length)
+
+                # For now, return a success response indicating the backend is working
+                response = {
+                    "message": "AI processor loaded successfully",
+                    "status": "Backend is operational",
+                    "note": "File processing implementation in progress"
+                }
+
+            except Exception as e:
+                response = {
+                    "error": "AI processing not available",
+                    "message": str(e),
+                    "status": "Backend connection failed"
+                }
+        else:
+            response = {"error": "Endpoint not found", "path": path}
+
+        self.wfile.write(json.dumps(response).encode())
+
+    def do_OPTIONS(self):
+        """Handle OPTIONS requests for CORS."""
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', '*')
+        self.end_headers()
