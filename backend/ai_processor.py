@@ -117,7 +117,7 @@ CATEGORY SELECTION:
 - Education: Books, courses, tuition, educational materials, training
 - Other: Services, fees, miscellaneous, unclear categories
 
-IMPORTANT: Return ONLY the JSON object. Do not include markdown code blocks, explanations, or any other text.
+IMPORTANT: Return ONLY the JSON object. Do not include markdown code blocks, explanations, or any other text."""
 
     def create_simple_prompt(self) -> str:
         """Create a simpler prompt for basic receipt processing."""
@@ -491,12 +491,21 @@ Be accurate with merchant name and total amount. Use current date if date unclea
             if not isinstance(item, dict):
                 continue
 
-            # Ensure required fields
+            # Ensure required fields with proper None handling
+            try:
+                # Handle quantity - ensure it's never None
+                quantity_value = item.get("quantity")
+                if quantity_value is None or quantity_value == "":
+                    quantity_value = 1
+                quantity = max(1, int(float(quantity_value)))
+            except (ValueError, TypeError):
+                quantity = 1
+
             validated_item = {
-                "name": str(item.get("name", "Unknown Item")).strip(),
-                "quantity": max(1, int(item.get("quantity", 1))),
-                "unit_price": self._clean_numeric_value(item.get("unit_price", 0), "unit_price"),
-                "total_price": self._clean_numeric_value(item.get("total_price", 0), "total_price")
+                "name": str(item.get("name") or "Unknown Item").strip(),
+                "quantity": quantity,
+                "unit_price": self._clean_numeric_value(item.get("unit_price"), "unit_price"),
+                "total_price": self._clean_numeric_value(item.get("total_price"), "total_price")
             }
 
             # Skip items with no name or zero price
