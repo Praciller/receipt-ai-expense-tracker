@@ -51,10 +51,10 @@ export function ReceiptUpload() {
       const formData = new FormData();
       formData.append("file", file);
 
-      // Use environment variable for API URL, fallback to Railway
+      // Use environment variable for API URL, fallback to Render
       const apiUrl =
         process.env.NEXT_PUBLIC_API_URL ||
-        "https://receipt-ai-expense-tracker-production.up.railway.app";
+        "https://receipt-ai-expense-tracker.onrender.com";
 
       const response = await fetch(`${apiUrl}/process-receipt`, {
         method: "POST",
