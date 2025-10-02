@@ -90,6 +90,30 @@ export function ReceiptUpload() {
         setResult(transformedResult);
         setProgress(100);
         setError(null); // Clear any previous errors
+
+        // Save to localStorage for analytics
+        try {
+          const existingReceipts = localStorage.getItem("receipts");
+          const receipts = existingReceipts ? JSON.parse(existingReceipts) : [];
+
+          // Add new receipt with timestamp
+          receipts.push({
+            merchant: transformedResult.merchant,
+            total: transformedResult.total,
+            date: transformedResult.date,
+            category: transformedResult.category,
+            confidence: transformedResult.confidence,
+            timestamp: Date.now(),
+          });
+
+          localStorage.setItem("receipts", JSON.stringify(receipts));
+        } catch (storageError) {
+          console.error(
+            "Failed to save receipt to localStorage:",
+            storageError
+          );
+          // Don't fail the upload if storage fails
+        }
       } else {
         const errorText = await response.text();
         console.error("API Error:", response.status, errorText);
