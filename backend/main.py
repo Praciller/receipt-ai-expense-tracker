@@ -3,6 +3,7 @@ import logging
 from typing import Dict, Any
 from io import BytesIO
 from pathlib import Path
+from datetime import datetime
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -64,6 +65,9 @@ async def process_receipt(
 ):
     """Process uploaded receipt image and extract expense information."""
 
+    # Validate file size (max 10MB)
+    max_file_size = 10 * 1024 * 1024  # 10MB
+
     # Validate file type - check both content type and file extension
     valid_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
     file_extension = Path(file.filename).suffix.lower() if file.filename else ""
@@ -72,30 +76,66 @@ async def process_receipt(
     extension_valid = file_extension in valid_extensions
 
     if not (content_type_valid or extension_valid):
-        raise HTTPException(status_code=400, detail="File must be an image")
+        raise HTTPException(
+            status_code=400,
+            detail="File must be an image (JPG, PNG, GIF, BMP, or WebP)"
+        )
 
     try:
-        # Read and process image
+        # Read and validate image data
         image_data = await file.read()
-        image = Image.open(BytesIO(image_data))
+
+        if len(image_data) == 0:
+            raise HTTPException(status_code=400, detail="Empty file uploaded")
+
+        if len(image_data) > max_file_size:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File too large. Maximum size is {max_file_size // (1024*1024)}MB"
+            )
+
+        logger.info(f"Processing receipt: {file.filename}, size: {len(image_data)} bytes")
+
+        # Open and validate image
+        try:
+            image = Image.open(BytesIO(image_data))
+            image.verify()  # Verify it's a valid image
+
+            # Reopen for processing (verify() closes the image)
+            image = Image.open(BytesIO(image_data))
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid image file: {str(e)}")
 
         # Convert to RGB if necessary
         if image.mode != "RGB":
             image = image.convert("RGB")
+            logger.info(f"Converted image from {image.mode} to RGB")
 
         # Process with AI
+        logger.info(f"Starting AI processing with advanced={advanced}")
         result = await ai_processor.process_receipt(image, use_advanced=advanced)
 
-        # Add metadata
-        result["filename"] = file.filename
-        result["file_size"] = len(image_data)
-        result["image_dimensions"] = image.size
+        # Add processing metadata
+        result["processing_metadata"] = {
+            "filename": file.filename,
+            "file_size": len(image_data),
+            "image_dimensions": list(image.size),
+            "processing_mode": "advanced" if advanced else "simple",
+            "processed_at": datetime.now().isoformat()
+        }
 
+        logger.info(f"Successfully processed receipt with confidence: {result.get('confidence', 0)}")
         return JSONResponse(content=result)
 
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
-        logger.error(f"Error processing file: {e}")
-        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+        logger.error(f"Unexpected error processing file {file.filename}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred while processing the receipt. Please try again."
+        )
 
 if __name__ == "__main__":
     uvicorn.run(
