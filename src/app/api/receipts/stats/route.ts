@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 
 function calculateStats(receipts: ReceiptRow[], period: string) {
   const now = new Date();
-  let startDate: Date;
+  let startDate: Date | null = null;
 
   switch (period) {
     case 'week':
@@ -43,15 +43,31 @@ function calculateStats(receipts: ReceiptRow[], period: string) {
     case 'year':
       startDate = new Date(now.getFullYear(), 0, 1);
       break;
+    case 'all':
+      startDate = null; // No filter
+      break;
     case 'month':
     default:
       startDate = new Date(now.getFullYear(), now.getMonth(), 1);
       break;
   }
 
+  // Helper to get effective date (use created_at as fallback)
+  const getEffectiveDate = (r: ReceiptRow): Date => {
+    if (r.date) {
+      const d = new Date(r.date);
+      // Check if date is reasonable (between 2000 and 2030)
+      if (d.getFullYear() >= 2000 && d.getFullYear() <= 2030) {
+        return d;
+      }
+    }
+    // Fallback to created_at
+    return new Date(r.created_at);
+  };
+
   const filteredReceipts = receipts.filter((r) => {
-    if (!r.date) return false;
-    const receiptDate = new Date(r.date);
+    if (!startDate) return true; // 'all' period - no filter
+    const receiptDate = getEffectiveDate(r);
     return receiptDate >= startDate && receiptDate <= now;
   });
 
@@ -76,14 +92,13 @@ function calculateStats(receipts: ReceiptRow[], period: string) {
   // Spending over time (daily for week/month, monthly for year)
   const timeSpending: Record<string, number> = {};
   filteredReceipts.forEach((r) => {
-    if (!r.date) return;
-    const date = new Date(r.date);
+    const date = getEffectiveDate(r);
     let key: string;
 
-    if (period === 'year') {
+    if (period === 'year' || period === 'all') {
       key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     } else {
-      key = r.date;
+      key = date.toISOString().split('T')[0]; // YYYY-MM-DD format
     }
 
     timeSpending[key] = (timeSpending[key] || 0) + (r.total_amount || 0);

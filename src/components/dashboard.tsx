@@ -69,7 +69,7 @@ interface DashboardProps {
 export function Dashboard({ refreshTrigger }: DashboardProps) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
+  const [period, setPeriod] = useState<'week' | 'month' | 'year' | 'all'>('all');
 
   const fetchStats = async () => {
     setIsLoading(true);
@@ -138,14 +138,14 @@ export function Dashboard({ refreshTrigger }: DashboardProps) {
     <div className="space-y-6">
       {/* Period Selector */}
       <div className="flex gap-2">
-        {(['week', 'month', 'year'] as const).map((p) => (
+        {(['all', 'week', 'month', 'year'] as const).map((p) => (
           <Button
             key={p}
             variant={period === p ? 'default' : 'outline'}
             size="sm"
             onClick={() => setPeriod(p)}
           >
-            {p === 'week' ? 'สัปดาห์นี้' : p === 'month' ? 'เดือนนี้' : 'ปีนี้'}
+            {p === 'all' ? 'ทั้งหมด' : p === 'week' ? 'สัปดาห์นี้' : p === 'month' ? 'เดือนนี้' : 'ปีนี้'}
           </Button>
         ))}
         <Button variant="ghost" size="icon" onClick={fetchStats}>
