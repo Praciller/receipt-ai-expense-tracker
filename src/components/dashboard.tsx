@@ -76,9 +76,31 @@ export function Dashboard({ refreshTrigger }: DashboardProps) {
     try {
       const response = await fetch(`/api/receipts/stats?period=${period}`);
       const data = await response.json();
-      setStats(data);
+      
+      // Handle error response or missing data
+      if (data.error || !data.categoryData) {
+        console.error('API error:', data.error);
+        setStats({
+          totalSpending: 0,
+          receiptCount: 0,
+          categoryData: [],
+          timeData: [],
+          recentReceipts: [],
+          topShops: [],
+        });
+      } else {
+        setStats(data);
+      }
     } catch (error) {
       console.error('Failed to fetch stats:', error);
+      setStats({
+        totalSpending: 0,
+        receiptCount: 0,
+        categoryData: [],
+        timeData: [],
+        recentReceipts: [],
+        topShops: [],
+      });
     } finally {
       setIsLoading(false);
     }
