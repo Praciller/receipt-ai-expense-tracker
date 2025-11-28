@@ -16,7 +16,6 @@ import {
   Line,
 } from 'recharts';
 import { format } from 'date-fns';
-import { th } from 'date-fns/locale';
 import {
   TrendingUp,
   Receipt,
@@ -129,7 +128,7 @@ export function Dashboard({ refreshTrigger }: DashboardProps) {
   if (!stats) {
     return (
       <div className="text-center text-gray-500 py-8">
-        ไม่สามารถโหลดข้อมูลได้
+        Unable to load data
       </div>
     );
   }
@@ -145,7 +144,7 @@ export function Dashboard({ refreshTrigger }: DashboardProps) {
             size="sm"
             onClick={() => setPeriod(p)}
           >
-            {p === 'all' ? 'ทั้งหมด' : p === 'week' ? 'สัปดาห์นี้' : p === 'month' ? 'เดือนนี้' : 'ปีนี้'}
+            {p === 'all' ? 'All Time' : p === 'week' ? 'This Week' : p === 'month' ? 'This Month' : 'This Year'}
           </Button>
         ))}
         <Button variant="ghost" size="icon" onClick={fetchStats}>
@@ -155,12 +154,12 @@ export function Dashboard({ refreshTrigger }: DashboardProps) {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
+        <Card className="shadow-sm border-l-4 border-l-blue-500">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              ยอดใช้จ่ายรวม
+            <CardTitle className="text-sm font-semibold text-gray-700">
+              Total Spending
             </CardTitle>
-            <TrendingUp className="h-4 w-4 text-gray-400" />
+            <TrendingUp className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
@@ -169,26 +168,26 @@ export function Dashboard({ refreshTrigger }: DashboardProps) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-sm border-l-4 border-l-green-500">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              จำนวนใบเสร็จ
+            <CardTitle className="text-sm font-semibold text-gray-700">
+              Total Receipts
             </CardTitle>
-            <Receipt className="h-4 w-4 text-gray-400" />
+            <Receipt className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              {stats.receiptCount} ใบ
+              {stats.receiptCount}
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-sm border-l-4 border-l-purple-500">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              เฉลี่ยต่อใบ
+            <CardTitle className="text-sm font-semibold text-gray-700">
+              Average per Receipt
             </CardTitle>
-            <Store className="h-4 w-4 text-gray-400" />
+            <Store className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
@@ -205,11 +204,11 @@ export function Dashboard({ refreshTrigger }: DashboardProps) {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Spending Over Time */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              ยอดใช้จ่ายตามช่วงเวลา
+        <Card className="shadow-sm">
+          <CardHeader className="bg-gray-50 border-b">
+            <CardTitle className="flex items-center gap-2 text-gray-800">
+              <Calendar className="h-5 w-5 text-blue-600" />
+              Spending Over Time
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -222,7 +221,7 @@ export function Dashboard({ refreshTrigger }: DashboardProps) {
                     tick={{ fontSize: 12 }}
                     tickFormatter={(value) => {
                       const date = new Date(value);
-                      return format(date, 'd MMM', { locale: th });
+                      return format(date, 'd MMM');
                     }}
                   />
                   <YAxis
@@ -230,10 +229,10 @@ export function Dashboard({ refreshTrigger }: DashboardProps) {
                     tickFormatter={(value) => `฿${value.toLocaleString()}`}
                   />
                   <Tooltip
-                    formatter={(value: number) => [formatCurrency(value), 'ยอดใช้จ่าย']}
+                    formatter={(value: number) => [formatCurrency(value), 'Spending']}
                     labelFormatter={(label) => {
                       const date = new Date(label);
-                      return format(date, 'd MMMM yyyy', { locale: th });
+                      return format(date, 'd MMMM yyyy');
                     }}
                   />
                   <Line
@@ -246,17 +245,17 @@ export function Dashboard({ refreshTrigger }: DashboardProps) {
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[300px] flex items-center justify-center text-gray-500">
-                ยังไม่มีข้อมูล
+              <div className="h-[300px] flex items-center justify-center text-gray-400">
+                No data available
               </div>
             )}
           </CardContent>
         </Card>
 
         {/* Category Breakdown */}
-        <Card>
-          <CardHeader>
-            <CardTitle>สัดส่วนตามประเภท</CardTitle>
+        <Card className="shadow-sm">
+          <CardHeader className="bg-gray-50 border-b">
+            <CardTitle className="text-gray-800">Spending by Category</CardTitle>
           </CardHeader>
           <CardContent>
             {stats.categoryData.length > 0 ? (
@@ -287,8 +286,8 @@ export function Dashboard({ refreshTrigger }: DashboardProps) {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[300px] flex items-center justify-center text-gray-500">
-                ยังไม่มีข้อมูล
+              <div className="h-[300px] flex items-center justify-center text-gray-400">
+                No data available
               </div>
             )}
           </CardContent>
@@ -298,11 +297,11 @@ export function Dashboard({ refreshTrigger }: DashboardProps) {
       {/* Top Shops & Recent Receipts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Shops */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Store className="h-5 w-5" />
-              ร้านค้าที่ใช้จ่ายมากที่สุด
+        <Card className="shadow-sm">
+          <CardHeader className="bg-gray-50 border-b">
+            <CardTitle className="flex items-center gap-2 text-gray-800">
+              <Store className="h-5 w-5 text-blue-600" />
+              Top Stores
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -322,25 +321,25 @@ export function Dashboard({ refreshTrigger }: DashboardProps) {
                     width={100}
                   />
                   <Tooltip
-                    formatter={(value: number) => [formatCurrency(value), 'ยอดใช้จ่าย']}
+                    formatter={(value: number) => [formatCurrency(value), 'Spending']}
                   />
                   <Bar dataKey="amount" fill="#3B82F6" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[250px] flex items-center justify-center text-gray-500">
-                ยังไม่มีข้อมูล
+              <div className="h-[250px] flex items-center justify-center text-gray-400">
+                No data available
               </div>
             )}
           </CardContent>
         </Card>
 
         {/* Recent Receipts */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Receipt className="h-5 w-5" />
-              ใบเสร็จล่าสุด
+        <Card className="shadow-sm">
+          <CardHeader className="bg-gray-50 border-b">
+            <CardTitle className="flex items-center gap-2 text-gray-800">
+              <Receipt className="h-5 w-5 text-blue-600" />
+              Recent Receipts
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -353,12 +352,12 @@ export function Dashboard({ refreshTrigger }: DashboardProps) {
                   >
                     <div>
                       <p className="font-medium text-gray-900">
-                        {receipt.shop_name || 'ไม่ระบุร้าน'}
+                        {receipt.shop_name || 'Unknown Store'}
                       </p>
                       <p className="text-sm text-gray-500">
                         {receipt.date
-                          ? format(new Date(receipt.date), 'd MMM yyyy', { locale: th })
-                          : 'ไม่ระบุวันที่'}
+                          ? format(new Date(receipt.date), 'd MMM yyyy')
+                          : 'No date'}
                         {receipt.category && (
                           <span
                             className="ml-2 px-2 py-0.5 text-xs rounded-full"
@@ -379,8 +378,8 @@ export function Dashboard({ refreshTrigger }: DashboardProps) {
                 ))}
               </div>
             ) : (
-              <div className="h-[250px] flex items-center justify-center text-gray-500">
-                ยังไม่มีใบเสร็จ
+              <div className="h-[250px] flex items-center justify-center text-gray-400">
+                No receipts yet
               </div>
             )}
           </CardContent>

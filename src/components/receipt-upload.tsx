@@ -86,11 +86,11 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
   });
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+    <Card className="w-full shadow-sm">
+      <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-xl">
+        <CardTitle className="flex items-center gap-2 text-white">
           <Upload className="h-5 w-5" />
-          อัปโหลดใบเสร็จ
+          Upload Receipt
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -116,7 +116,7 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
                 <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-lg">
                   <div className="flex flex-col items-center gap-2">
                     <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                    <span className="text-sm text-gray-600">กำลังวิเคราะห์ใบเสร็จ...</span>
+                    <span className="text-sm text-gray-600">Analyzing receipt...</span>
                   </div>
                 </div>
               )}
@@ -128,14 +128,14 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
               </div>
               <div>
                 <p className="text-lg font-medium text-gray-700">
-                  {isDragActive ? 'วางไฟล์ที่นี่' : 'ลากไฟล์มาวางที่นี่'}
+                  {isDragActive ? 'Drop file here' : 'Drag & drop file here'}
                 </p>
                 <p className="text-sm text-gray-500 mt-1">
-                  หรือคลิกเพื่อเลือกไฟล์ (JPEG, PNG, WebP)
+                  or click to select a file (JPEG, PNG, WebP)
                 </p>
               </div>
               <Button variant="outline" type="button" disabled={isUploading}>
-                เลือกไฟล์
+                Select File
               </Button>
             </div>
           )}
@@ -143,14 +143,14 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
 
         {/* Status Messages */}
         {uploadStatus === 'success' && (
-          <div className="mt-4 flex items-center gap-2 text-green-600 bg-green-50 p-3 rounded-lg">
+          <div className="mt-4 flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 p-3 rounded-lg">
             <CheckCircle className="h-5 w-5" />
-            <span>อัปโหลดและวิเคราะห์ใบเสร็จสำเร็จ!</span>
+            <span>Receipt uploaded and analyzed successfully!</span>
           </div>
         )}
 
         {uploadStatus === 'error' && (
-          <div className="mt-4 flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg">
+          <div className="mt-4 flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 p-3 rounded-lg">
             <XCircle className="h-5 w-5" />
             <span>{errorMessage}</span>
           </div>

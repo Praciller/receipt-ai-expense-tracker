@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
-import { th } from 'date-fns/locale';
 import { Trash2, Eye, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -46,7 +45,7 @@ export function ReceiptList({ refreshTrigger }: ReceiptListProps) {
   }, [refreshTrigger]);
 
   const handleDelete = async (id: string) => {
-    if (!confirm('ต้องการลบใบเสร็จนี้หรือไม่?')) return;
+    if (!confirm('Are you sure you want to delete this receipt?')) return;
 
     setDeletingId(id);
     try {
@@ -83,18 +82,18 @@ export function ReceiptList({ refreshTrigger }: ReceiptListProps) {
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>รายการใบเสร็จทั้งหมด</CardTitle>
-        <Button variant="ghost" size="icon" onClick={fetchReceipts}>
+    <Card className="shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-xl">
+        <CardTitle className="text-white">All Receipts</CardTitle>
+        <Button variant="ghost" size="icon" onClick={fetchReceipts} className="text-white hover:bg-blue-500">
           <RefreshCw className="h-4 w-4" />
         </Button>
       </CardHeader>
       <CardContent>
         {receipts.length === 0 ? (
-          <div className="text-center text-gray-500 py-12">
-            <p>ยังไม่มีใบเสร็จ</p>
-            <p className="text-sm mt-1">อัปโหลดใบเสร็จเพื่อเริ่มต้นใช้งาน</p>
+          <div className="text-center text-gray-400 py-12">
+            <p className="text-lg">No receipts yet</p>
+            <p className="text-sm mt-1">Upload a receipt to get started</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -113,14 +112,12 @@ export function ReceiptList({ refreshTrigger }: ReceiptListProps) {
                   <div className="flex items-center gap-4">
                     <div>
                       <p className="font-medium text-gray-900">
-                        {receipt.shop_name || 'ไม่ระบุร้าน'}
+                        {receipt.shop_name || 'Unknown Store'}
                       </p>
                       <p className="text-sm text-gray-500">
                         {receipt.date
-                          ? format(new Date(receipt.date), 'd MMMM yyyy', {
-                              locale: th,
-                            })
-                          : 'ไม่ระบุวันที่'}
+                          ? format(new Date(receipt.date), 'd MMMM yyyy')
+                          : 'No date'}
                       </p>
                     </div>
                     {receipt.category && (
@@ -153,8 +150,8 @@ export function ReceiptList({ refreshTrigger }: ReceiptListProps) {
                     {/* Items */}
                     {receipt.items && receipt.items.length > 0 && (
                       <div className="mb-4">
-                        <h4 className="text-sm font-medium text-gray-700 mb-2">
-                          รายการสินค้า
+                        <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                          Items
                         </h4>
                         <div className="space-y-2">
                           {receipt.items.map((item: ReceiptItem, index: number) => (
@@ -177,15 +174,15 @@ export function ReceiptList({ refreshTrigger }: ReceiptListProps) {
                     {/* Tax ID */}
                     {receipt.tax_id && (
                       <p className="text-sm text-gray-500 mb-4">
-                        เลขผู้เสียภาษี: {receipt.tax_id}
+                        Tax ID: {receipt.tax_id}
                       </p>
                     )}
 
                     {/* Receipt Image */}
                     {receipt.image_base64 && (
                       <div className="mb-4">
-                        <h4 className="text-sm font-medium text-gray-700 mb-2">
-                          รูปใบเสร็จ
+                        <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                          Receipt Image
                         </h4>
                         <img
                           src={`data:image/jpeg;base64,${receipt.image_base64}`}
@@ -211,7 +208,7 @@ export function ReceiptList({ refreshTrigger }: ReceiptListProps) {
                         ) : (
                           <Trash2 className="h-4 w-4 mr-1" />
                         )}
-                        ลบ
+                        Delete
                       </Button>
                     </div>
                   </div>
