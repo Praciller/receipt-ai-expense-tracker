@@ -16,25 +16,30 @@ export interface ParsedReceipt {
 }
 
 const RECEIPT_PROMPT = `
-วิเคราะห์รูปภาพใบเสร็จนี้และดึงข้อมูลออกมาในรูปแบบ JSON เท่านั้น ห้ามมี Markdown block (\`\`\`json)
-โครงสร้าง JSON ที่ต้องการ:
+Analyze this receipt image and extract data in JSON format only. No Markdown blocks.
+
+IMPORTANT: Thai receipts use Buddhist Era (พ.ศ.) dates. If you see a 2-digit year like 68, 67, 66, it means Buddhist year 2568, 2567, 2566. 
+Convert to Gregorian (ค.ศ.) by subtracting 543. Example: 27/11/68 = 27/11/2568 พ.ศ. = 2025-11-27 in Gregorian.
+
+Required JSON structure:
 {
-  "shop_name": "string (ชื่อร้านค้า)",
-  "date": "string (YYYY-MM-DD)",
+  "shop_name": "string (store name)",
+  "date": "string (YYYY-MM-DD in Gregorian/Western calendar)",
   "items": [
-    { "name": "string (ชื่อสินค้า)", "price": number, "quantity": number }
+    { "name": "string (item name)", "price": number, "quantity": number }
   ],
-  "total_amount": number (ยอดสุทธิ),
-  "tax_id": "string (เลขผู้เสียภาษี ถ้ามี)",
-  "category": "string (ให้เดาประเภท: Food, Transport, Shopping, Utility, Healthcare, Entertainment, Other)"
+  "total_amount": number (total amount),
+  "tax_id": "string (tax ID if present)",
+  "category": "string (guess category: Food, Transport, Shopping, Utility, Healthcare, Entertainment, Other)"
 }
 
-กฎสำคัญ:
-1. ถ้าอ่านค่าไหนไม่ออก ให้ใส่ null
-2. price และ total_amount ต้องเป็นตัวเลข (number) เท่านั้น
-3. quantity ถ้าไม่ระบุให้ใส่ 1
-4. date ต้องอยู่ในรูปแบบ YYYY-MM-DD เท่านั้น
-5. ตอบเป็น JSON object เท่านั้น ห้ามมีข้อความอื่น
+Rules:
+1. If you cannot read a value, use null
+2. price and total_amount must be numbers only
+3. quantity defaults to 1 if not specified
+4. date MUST be in YYYY-MM-DD format (Gregorian calendar, NOT Buddhist Era)
+5. For Thai dates: subtract 543 from Buddhist year to get Gregorian year
+6. Return JSON object only, no other text
 `;
 
 export async function parseReceiptImage(base64Image: string, mimeType: string): Promise<ParsedReceipt> {

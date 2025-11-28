@@ -18,9 +18,9 @@ export default function Home() {
   };
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: 'upload', label: 'อัปโหลด', icon: <Receipt className="h-4 w-4" /> },
-    { id: 'dashboard', label: 'แดชบอร์ด', icon: <LayoutDashboard className="h-4 w-4" /> },
-    { id: 'receipts', label: 'รายการ', icon: <List className="h-4 w-4" /> },
+    { id: 'upload', label: 'Upload', icon: <Receipt className="h-4 w-4" /> },
+    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
+    { id: 'receipts', label: 'Receipts', icon: <List className="h-4 w-4" /> },
   ];
 
   return (
@@ -85,28 +85,28 @@ export default function Home() {
           <div className="max-w-2xl mx-auto">
             <ReceiptUpload onUploadSuccess={handleUploadSuccess} />
             
-            <div className="mt-8 p-6 bg-white rounded-xl border border-gray-200">
+            <div className="mt-8 p-6 bg-white rounded-xl border border-gray-200 shadow-sm">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                วิธีใช้งาน
+                How It Works
               </h2>
               <ol className="space-y-3 text-gray-600">
                 <li className="flex gap-3">
                   <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium">
                     1
                   </span>
-                  <span>ถ่ายรูปหรือเลือกรูปใบเสร็จจากอุปกรณ์ของคุณ</span>
+                  <span>Take a photo or select a receipt image from your device</span>
                 </li>
                 <li className="flex gap-3">
                   <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium">
                     2
                   </span>
-                  <span>AI จะวิเคราะห์และดึงข้อมูลจากใบเสร็จโดยอัตโนมัติ</span>
+                  <span>AI will automatically analyze and extract data from the receipt</span>
                 </li>
                 <li className="flex gap-3">
                   <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium">
                     3
                   </span>
-                  <span>ดูสรุปค่าใช้จ่ายและกราฟวิเคราะห์ในแดชบอร์ด</span>
+                  <span>View expense summaries and analytics in the dashboard</span>
                 </li>
               </ol>
             </div>

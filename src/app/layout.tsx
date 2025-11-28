@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Receipt Tracker - AI-Powered Expense Tracking",
-  description: "อัปโหลดรูปใบเสร็จ ให้ AI วิเคราะห์และติดตามค่าใช้จ่ายอัตโนมัติ",
+  description: "Upload receipt images and let AI automatically analyze and track your expenses",
 };
 
 export default function RootLayout({
@@ -23,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="th">
+    <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
