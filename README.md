@@ -1,26 +1,60 @@
-# Receipt Tracker - AI-Powered Expense Tracking
+# Receipt AI Expense Tracker
 
-อัปโหลดรูปใบเสร็จ → AI แกะข้อมูลเป็น JSON → แสดงกราฟ Dashboard
+Multimodal expense-tracking app that turns Thai/English receipt images into structured financial data, stores the result in Supabase, and visualizes spending patterns in a dashboard.
 
-## Features
+## Why This Project Matters
 
-- **AI Receipt Parsing**: ใช้ Gemini 1.5 Flash วิเคราะห์รูปใบเสร็จและดึงข้อมูลอัตโนมัติ
-- **Multi-language Support**: รองรับใบเสร็จภาษาไทยและอังกฤษ
-- **Dashboard Analytics**: กราฟแสดงสรุปค่าใช้จ่ายตามประเภทและช่วงเวลา
-- **Category Classification**: AI จัดประเภทค่าใช้จ่ายอัตโนมัติ (Food, Transport, Shopping, etc.)
-- **Receipt History**: ดูรายการใบเสร็จทั้งหมดพร้อมรายละเอียด
+This project demonstrates practical AI engineering beyond a model demo:
+
+- Vision-language extraction with Gemini 2.0 Flash
+- Prompt design for strict JSON output and receipt-specific edge cases
+- Thai Buddhist Era date conversion to Gregorian `YYYY-MM-DD`
+- Supabase/PostgreSQL persistence with typed receipt records
+- Analytics APIs for spending totals, category trends, top shops, and recent receipts
+- Production-style Next.js UI with upload, review, history, and dashboard flows
+
+## Core Features
+
+- **AI receipt parsing:** uploads receipt images and extracts shop name, date, line items, total, tax ID, and category.
+- **Thai and English support:** handles Thai receipt text and Buddhist Era year formats such as 2568 or 68.
+- **Structured JSON pipeline:** validates Gemini output before storing records.
+- **Expense analytics:** summarizes spending by period, category, shop, and recent activity.
+- **Receipt management:** lists, filters, reviews, and deletes saved receipts.
 
 ## Tech Stack
 
-- **Frontend**: Next.js 15, React, TailwindCSS
-- **Charts**: Recharts
-- **AI**: Google Gemini 1.5 Flash (Vision)
-- **Database**: Supabase (PostgreSQL)
-- **Icons**: Lucide React
+| Area | Tools |
+| --- | --- |
+| Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS |
+| AI | Google Gemini 2.0 Flash Vision, `@google/generative-ai` |
+| Data | Supabase, PostgreSQL, JSONB |
+| Charts | Recharts |
+| UX | React Dropzone, Lucide React |
+
+## Architecture
+
+```text
+Receipt image
+  -> Next.js upload UI
+  -> /api/receipts/parse
+  -> Gemini Vision extraction prompt
+  -> JSON validation and normalization
+  -> Supabase receipts table
+  -> Dashboard and history APIs
+  -> Recharts analytics UI
+```
+
+## Key Implementation Details
+
+- `src/lib/gemini.ts` defines the receipt extraction prompt and Gemini Vision call.
+- `src/app/api/receipts/parse/route.ts` handles image parsing requests.
+- `src/app/api/receipts/route.ts` manages receipt CRUD operations.
+- `src/app/api/receipts/stats/route.ts` computes dashboard analytics.
+- `src/components/dashboard.tsx` renders category, time-series, shop, and recent-receipt views.
 
 ## Getting Started
 
-### 1. Clone and Install
+### 1. Clone and install
 
 ```bash
 git clone https://github.com/Praciller/receipt-ai-expense-tracker.git
@@ -28,22 +62,21 @@ cd receipt-ai-expense-tracker
 npm install
 ```
 
-### 2. Set up Environment Variables
+### 2. Configure environment
 
-Copy `.env.example` to `.env.local` and fill in your credentials:
+Create `.env.local`:
 
 ```bash
-cp .env.example .env.local
+GEMINI_API_KEY=your_google_ai_studio_key
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-Required environment variables:
-- `GEMINI_API_KEY` - Get from [Google AI Studio](https://aistudio.google.com/app/apikey)
-- `NEXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Your Supabase anon key
+Get a Gemini key from [Google AI Studio](https://aistudio.google.com/app/apikey).
 
-### 3. Set up Supabase Database
+### 3. Create the database table
 
-Run this SQL in your Supabase SQL Editor:
+Run the SQL in `supabase/schema.sql`, or create the core table manually:
 
 ```sql
 CREATE TABLE receipts (
@@ -57,36 +90,30 @@ CREATE TABLE receipts (
   image_base64 TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
--- Enable Row Level Security (optional)
-ALTER TABLE receipts ENABLE ROW LEVEL SECURITY;
-
--- Create policy to allow all operations (adjust for production)
-CREATE POLICY "Allow all operations" ON receipts
-  FOR ALL USING (true);
 ```
 
-### 4. Run Development Server
+### 4. Run locally
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see the app.
-
-## Usage
-
-1. **Upload Receipt**: ลากไฟล์รูปใบเสร็จมาวางหรือคลิกเพื่อเลือกไฟล์
-2. **AI Processing**: รอ AI วิเคราะห์และดึงข้อมูลจากใบเสร็จ
-3. **View Dashboard**: ดูสรุปค่าใช้จ่ายในแดชบอร์ด
-4. **Manage Receipts**: ดูรายละเอียดและลบใบเสร็จในหน้ารายการ
+Open [http://localhost:3000](http://localhost:3000).
 
 ## Supported Receipt Types
 
-- ใบเสร็จ 7-Eleven, ร้านสะดวกซื้อ
-- ใบเสร็จร้านอาหาร
-- ใบกำกับภาษี
-- ใบเสร็จซื้อของทั่วไป
+- Convenience stores and supermarkets
+- Restaurants and cafes
+- Tax invoices
+- General shopping receipts
+- Thai receipts using Buddhist Era dates
+
+## AI Engineering Highlights
+
+- Handles ambiguous OCR-like visual input with a deterministic JSON contract.
+- Converts local Thai date conventions into database-friendly Gregorian dates.
+- Uses typed API boundaries between AI extraction, storage, and analytics.
+- Turns multimodal AI output into a full product workflow instead of a single prompt demo.
 
 ## License
 
