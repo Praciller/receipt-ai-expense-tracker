@@ -1,35 +1,22 @@
 # Receipt AI Expense Tracker
 
-Multimodal expense-tracking app that turns Thai/English receipt images into structured financial data, stores the result in Supabase, and visualizes spending patterns in a dashboard.
+Multimodal AI expense app that turns Thai/English receipt images into structured financial records, stores them in Supabase, and visualizes spending patterns in a dashboard.
 
-## Why This Project Matters
+Live demo: add deployment URL here when available.
 
-This project demonstrates practical AI engineering beyond a model demo:
+## Role Fit
 
-- Vision-language extraction with Gemini 2.0 Flash
-- Prompt design for strict JSON output and receipt-specific edge cases
-- Thai Buddhist Era date conversion to Gregorian `YYYY-MM-DD`
-- Supabase/PostgreSQL persistence with typed receipt records
-- Analytics APIs for spending totals, category trends, top shops, and recent receipts
-- Production-style Next.js UI with upload, review, history, and dashboard flows
-
-## Core Features
-
-- **AI receipt parsing:** uploads receipt images and extracts shop name, date, line items, total, tax ID, and category.
-- **Thai and English support:** handles Thai receipt text and Buddhist Era year formats such as 2568 or 68.
-- **Structured JSON pipeline:** validates Gemini output before storing records.
-- **Expense analytics:** summarizes spending by period, category, shop, and recent activity.
-- **Receipt management:** lists, filters, reviews, and deletes saved receipts.
-
-## Tech Stack
-
-| Area | Tools |
+| Target role | Evidence shown in this repo |
 | --- | --- |
-| Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS |
-| AI | Google Gemini 2.0 Flash Vision, `@google/generative-ai` |
-| Data | Supabase, PostgreSQL, JSONB |
-| Charts | Recharts |
-| UX | React Dropzone, Lucide React |
+| AI Engineer | Gemini Vision extraction, structured JSON contract, validation and normalization |
+| GenAI Engineer | Multimodal prompting, receipt-specific edge cases, Thai/English support |
+| Data Engineer | Supabase/PostgreSQL persistence, typed receipt records, analytics API flow |
+| Data Analyst | Category spending, shop summaries, time-series dashboard, recent activity metrics |
+| Full-Stack / Frontend | Next.js, React, TypeScript, upload/review/history/dashboard UI |
+
+## AI Problem Solved
+
+Receipts contain messy visual information: shop names, dates, line items, totals, tax IDs, and mixed Thai/English text. This app uses a vision-language model to extract receipt data into a reliable schema, then turns that data into searchable records and analytics.
 
 ## Architecture
 
@@ -39,44 +26,42 @@ Receipt image
   -> /api/receipts/parse
   -> Gemini Vision extraction prompt
   -> JSON validation and normalization
+  -> Thai Buddhist Era date conversion
   -> Supabase receipts table
-  -> Dashboard and history APIs
-  -> Recharts analytics UI
+  -> Receipt CRUD and stats APIs
+  -> Recharts analytics dashboard
 ```
 
-## Key Implementation Details
+## AI and Data Flow
 
-- `src/lib/gemini.ts` defines the receipt extraction prompt and Gemini Vision call.
-- `src/app/api/receipts/parse/route.ts` handles image parsing requests.
-- `src/app/api/receipts/route.ts` manages receipt CRUD operations.
-- `src/app/api/receipts/stats/route.ts` computes dashboard analytics.
-- `src/components/dashboard.tsx` renders category, time-series, shop, and recent-receipt views.
+- Accepts receipt images from the browser upload flow.
+- Sends the image to Gemini Vision with a strict extraction prompt.
+- Normalizes extracted dates, including Buddhist Era year formats such as 2568 or 68.
+- Validates structured fields before persistence.
+- Stores receipts in Supabase/PostgreSQL with item details in JSONB.
+- Aggregates totals, categories, shops, recent receipts, and spending trends for dashboard views.
 
-## Getting Started
+## Key Engineering Highlights
 
-### 1. Clone and install
+- Multimodal extraction from real receipt images.
+- Thai/English receipt handling.
+- Deterministic JSON output contract around an LLM response.
+- Clear API boundary between AI parsing, data storage, and analytics.
+- Full product flow: upload, parse, review, persist, browse, analyze.
 
-```bash
-git clone https://github.com/Praciller/receipt-ai-expense-tracker.git
-cd receipt-ai-expense-tracker
-npm install
-```
+## Tech Stack
 
-### 2. Configure environment
+| Layer | Tools |
+| --- | --- |
+| Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS |
+| AI | Google Gemini 2.0 Flash Vision, `@google/generative-ai` |
+| Data | Supabase, PostgreSQL, JSONB |
+| Analytics | Recharts, receipt stats API |
+| UX | React Dropzone, Lucide React |
 
-Create `.env.local`:
+## Database Schema
 
-```bash
-GEMINI_API_KEY=your_google_ai_studio_key
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-Get a Gemini key from [Google AI Studio](https://aistudio.google.com/app/apikey).
-
-### 3. Create the database table
-
-Run the SQL in `supabase/schema.sql`, or create the core table manually:
+Core table:
 
 ```sql
 CREATE TABLE receipts (
@@ -92,28 +77,52 @@ CREATE TABLE receipts (
 );
 ```
 
-### 4. Run locally
+## Evaluation and Testing
+
+Recommended evaluation cases for this repo:
+
+| Case | Expected behavior |
+| --- | --- |
+| Clear Thai receipt | Correct shop, total, date conversion, category |
+| English receipt | Correct fields without Thai-specific assumptions |
+| Buddhist Era date | Converts to Gregorian `YYYY-MM-DD` |
+| Missing tax ID | Keeps tax ID empty/null without failing parse |
+| Low-quality image | Returns controlled error or partial result for review |
+
+Available checks:
+
+```bash
+npm run lint
+npm run build
+```
+
+## Local Setup
+
+```bash
+git clone https://github.com/Praciller/receipt-ai-expense-tracker.git
+cd receipt-ai-expense-tracker
+npm install
+```
+
+Create `.env.local`:
+
+```env
+GEMINI_API_KEY=your_google_ai_studio_key
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+Run locally:
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open `http://localhost:3000`.
 
-## Supported Receipt Types
+## Why This Repo Matters
 
-- Convenience stores and supermarkets
-- Restaurants and cafes
-- Tax invoices
-- General shopping receipts
-- Thai receipts using Buddhist Era dates
-
-## AI Engineering Highlights
-
-- Handles ambiguous OCR-like visual input with a deterministic JSON contract.
-- Converts local Thai date conventions into database-friendly Gregorian dates.
-- Uses typed API boundaries between AI extraction, storage, and analytics.
-- Turns multimodal AI output into a full product workflow instead of a single prompt demo.
+This project is a strong AI Engineer and Data/Analytics signal because it connects multimodal AI extraction to a real database and dashboard workflow. It shows more than a prompt: it shows data normalization, persistence, analytics, and a complete user-facing product.
 
 ## License
 
