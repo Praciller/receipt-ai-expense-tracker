@@ -2,7 +2,7 @@
 
 Multimodal AI expense app that turns Thai/English receipt images into structured financial records, stores them in Supabase, and visualizes spending patterns in a dashboard.
 
-Live demo: add deployment URL here when available.
+Run locally with the setup below. Sample receipt images are included in `test-slip/` for parser testing and UI demos.
 
 ## Role Fit
 
