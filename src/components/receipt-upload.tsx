@@ -1,8 +1,13 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import Image from 'next/image';
+import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, Loader2, CheckCircle, XCircle, Image as ImageIcon } from 'lucide-react';
+import { CheckCircle, Image as ImageIcon, Loader2, Upload } from 'lucide-react';
+import type { ParsedReceipt } from '@/lib/receipt';
+import { getReceiptRepository } from '@/lib/storage/get-receipt-repository';
+import { ErrorState } from './error-state';
+import { ParsedReceiptReview } from './parsed-receipt-review';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
@@ -10,149 +15,215 @@ interface ReceiptUploadProps {
   onUploadSuccess?: () => void;
 }
 
-export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [errorMessage, setErrorMessage] = useState('');
-  const [preview, setPreview] = useState<string | null>(null);
+interface ParseResponse {
+  receipt: ParsedReceipt;
+  provider_used?: string;
+  model_used?: string;
+  fallback_used?: boolean;
+  cached: boolean;
+  degraded_mode?: boolean;
+}
 
-  const processFile = async (file: File) => {
-    setIsUploading(true);
-    setUploadStatus('idle');
-    setErrorMessage('');
+export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
+  const [isParsing, setIsParsing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [preview, setPreview] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState('');
+  const [imageMimeType, setImageMimeType] = useState('');
+  const [parseResult, setParseResult] = useState<ParseResponse | null>(null);
+
+  const processFile = useCallback(async (file: File) => {
+    setIsParsing(true);
+    setError('');
+    setSuccess('');
+    setParseResult(null);
 
     try {
-      // Convert file to base64
-      const base64 = await fileToBase64(file);
-      const base64Data = base64.split(',')[1]; // Remove data:image/...;base64, prefix
+      const dataUrl = await fileToBase64(file);
+      const base64 = dataUrl.split(',')[1] ?? '';
+      setPreview(dataUrl);
+      setImageBase64(base64);
+      setImageMimeType(file.type);
 
-      // Send to API
+      const formData = new FormData();
+      formData.append('file', file);
       const response = await fetch('/api/receipts/parse', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image: base64Data,
-          mimeType: file.type,
-        }),
+        body: formData,
       });
-
-      const data = await response.json();
-
+      const data = (await response.json()) as ParseResponse & { error?: string };
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to process receipt');
+        throw new Error(data.error ?? 'AI could not parse this receipt.');
       }
 
-      setUploadStatus('success');
-      setPreview(null);
-      onUploadSuccess?.();
-
-      // Reset after 3 seconds
-      setTimeout(() => {
-        setUploadStatus('idle');
-      }, 3000);
-    } catch (error) {
-      console.error('Upload error:', error);
-      setUploadStatus('error');
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to upload receipt');
+      setParseResult(data);
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : 'Failed to parse receipt.',
+      );
     } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (file) {
-      // Show preview
-      const reader = new FileReader();
-      reader.onload = () => {
-        setPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-
-      // Process file
-      processFile(file);
+      setIsParsing(false);
     }
   }, []);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      const file = acceptedFiles[0];
+      if (file) {
+        void processFile(file);
+      }
+    },
+    [processFile],
+  );
+
+  const onDropRejected = useCallback(() => {
+    setError('Use one JPG, PNG, or WebP image within the configured size limit.');
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
+    onDropRejected,
     accept: {
-      'image/*': ['.jpeg', '.jpg', '.png', '.webp', '.heic', '.heif'],
+      'image/jpeg': ['.jpeg', '.jpg'],
+      'image/png': ['.png'],
+      'image/webp': ['.webp'],
     },
     maxFiles: 1,
-    disabled: isUploading,
+    maxSize: 5 * 1024 * 1024,
+    disabled: isParsing || isSaving,
+    noClick: true,
   });
 
+  const saveReceipt = async () => {
+    if (!parseResult) {
+      return;
+    }
+
+    setIsSaving(true);
+    setError('');
+    try {
+      const repository = await getReceiptRepository();
+      await repository.create(parseResult.receipt, {
+        base64: imageBase64,
+        mimeType: imageMimeType,
+      });
+
+      setSuccess('Saved locally to expense history.');
+      setParseResult(null);
+      setPreview(null);
+      setImageBase64('');
+      onUploadSuccess?.();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Failed to save receipt.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const reset = () => {
+    setParseResult(null);
+    setPreview(null);
+    setImageBase64('');
+    setImageMimeType('');
+    setError('');
+  };
+
   return (
-    <Card className="w-full shadow-sm">
-      <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-xl">
+    <Card className="w-full overflow-hidden">
+      <CardHeader className="border-b border-slate-200 bg-slate-950 text-white">
         <CardTitle className="flex items-center gap-2 text-white">
-          <Upload className="h-5 w-5" />
-          Upload Receipt
+          <Upload className="h-5 w-5" aria-hidden="true" />
+          Parse a receipt
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <div
-          {...getRootProps()}
-          className={`
-            relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer
-            transition-all duration-200 ease-in-out
-            ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}
-            ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}
-          `}
-        >
-          <input {...getInputProps()} />
-
-          {preview ? (
-            <div className="relative">
-              <img
-                src={preview}
-                alt="Receipt preview"
-                className="max-h-64 mx-auto rounded-lg shadow-md"
-              />
-              {isUploading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-lg">
-                  <div className="flex flex-col items-center gap-2">
-                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                    <span className="text-sm text-gray-600">Analyzing receipt...</span>
+      <CardContent className="pt-6">
+        {parseResult ? (
+          <ParsedReceiptReview
+            receipt={parseResult.receipt}
+            provider={parseResult.provider_used ?? 'ai'}
+            model={parseResult.model_used ?? 'metadata-hidden'}
+            isSaving={isSaving}
+            onChange={(receipt) => setParseResult({ ...parseResult, receipt })}
+            onSave={() => void saveReceipt()}
+            onCancel={reset}
+          />
+        ) : (
+          <div
+            {...getRootProps()}
+            className={`relative rounded-xl border border-dashed p-6 text-center transition-colors sm:p-10 ${
+              isDragActive
+                ? 'border-blue-500 bg-blue-50'
+                : 'border-slate-300 bg-slate-50 hover:border-slate-400'
+            } ${isParsing ? 'cursor-wait' : ''}`}
+          >
+            <input
+              {...getInputProps({
+                'aria-label': 'Receipt image',
+              })}
+            />
+            {preview ? (
+              <div className="relative mx-auto max-w-sm overflow-hidden rounded-lg bg-white">
+                <Image
+                  src={preview}
+                  alt="Selected receipt preview"
+                  width={640}
+                  height={800}
+                  unoptimized
+                  className="max-h-72 w-full object-contain"
+                />
+                {isParsing && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/90">
+                    <div role="status" className="text-center" aria-live="polite">
+                      <Loader2
+                        className="mx-auto h-8 w-8 animate-spin text-blue-700"
+                        aria-hidden="true"
+                      />
+                      <p className="mt-3 text-sm font-medium text-slate-700">
+                        Reading Thai and English receipt details…
+                      </p>
+                    </div>
                   </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center">
+                <div className="rounded-full bg-white p-4 ring-1 ring-slate-200">
+                  <ImageIcon
+                    className="h-8 w-8 text-slate-500"
+                    aria-hidden="true"
+                  />
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-4">
-              <div className="p-4 bg-gray-100 rounded-full">
-                <ImageIcon className="h-8 w-8 text-gray-400" />
-              </div>
-              <div>
-                <p className="text-lg font-medium text-gray-700">
-                  {isDragActive ? 'Drop file here' : 'Drag & drop file here'}
+                <p className="mt-4 text-lg font-semibold text-slate-900">
+                  {isDragActive ? 'Drop the receipt here' : 'Add a receipt image'}
                 </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  or click to select a file (JPEG, PNG, WebP)
+                <p className="mt-1 max-w-md text-sm text-slate-600">
+                  JPG, PNG, or WebP up to 5 MB. AI extracts fields, then you
+                  review before anything is saved.
                 </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={open}
+                  disabled={isParsing}
+                  className="mt-5 bg-white"
+                >
+                  Select image
+                </Button>
               </div>
-              <Button variant="outline" type="button" disabled={isUploading}>
-                Select File
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Status Messages */}
-        {uploadStatus === 'success' && (
-          <div className="mt-4 flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 p-3 rounded-lg">
-            <CheckCircle className="h-5 w-5" />
-            <span>Receipt uploaded and analyzed successfully!</span>
+            )}
           </div>
         )}
 
-        {uploadStatus === 'error' && (
-          <div className="mt-4 flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 p-3 rounded-lg">
-            <XCircle className="h-5 w-5" />
-            <span>{errorMessage}</span>
+        {error && <div className="mt-4"><ErrorState message={error} /></div>}
+        {success && (
+          <div
+            role="status"
+            className="mt-4 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-emerald-900"
+          >
+            <CheckCircle className="h-5 w-5" aria-hidden="true" />
+            <span>{success}</span>
           </div>
         )}
       </CardContent>
@@ -163,8 +234,8 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('Could not read the selected image.'));
     reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
   });
 }

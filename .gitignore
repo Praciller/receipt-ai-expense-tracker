@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/.cache/
+/.playwright-cli/
 
 # next.js
 /.next/
@@ -32,6 +34,14 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+
+# local planning and agent design context
+/receipt-ai-expense-tracker-audit-requirements.md
+/*-requirements.md
+/PRODUCT.md
+/DESIGN.md
+/.impeccable/
 
 # vercel
 .vercel

@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Receipt Tracker - AI-Powered Expense Tracking",
-  description: "Upload receipt images and let AI automatically analyze and track your expenses",
+  title: "Receipt Ledger | AI Expense Tracking",
+  description: "Reviewable Thai and English receipt extraction with expense analytics.",
 };
 
 export default function RootLayout({
