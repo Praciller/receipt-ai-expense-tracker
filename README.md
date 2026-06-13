@@ -2,6 +2,10 @@
 
 Local-first multimodal expense tracker for Thai and English receipts. A server-side, capability-aware AI router parses receipt images, users review the structured result, and confirmed receipts stay in the browser through IndexedDB and Dexie.js.
 
+Live deployment: [receipt-ai-expense-tracker-eta.vercel.app](https://receipt-ai-expense-tracker-eta.vercel.app)
+
+The current public deployment uses mock AI until newly rotated provider keys are configured.
+
 ## Product Flow
 
 ```text

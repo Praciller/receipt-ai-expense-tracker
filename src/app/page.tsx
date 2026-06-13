@@ -90,8 +90,8 @@ export default function Home() {
                 Turn receipt images into reviewed expense records
               </h2>
               <p className="mt-3 max-w-2xl text-slate-600">
-                Parse with server-side Gemini, verify the structured result,
-                then save it privately in this browser.
+                Parse with the server-side AI router, verify the structured
+                result, then save it privately in this browser.
               </p>
             </div>
             <ReceiptUpload onUploadSuccess={handleUploadSuccess} />

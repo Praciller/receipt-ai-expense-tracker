@@ -2,6 +2,16 @@
 
 Verification date: June 13, 2026.
 
+## Release
+
+| Item | Value |
+| --- | --- |
+| Release commit | `961c1023ab030ffcff3c14274959a2bde03f7d24` |
+| Branch | `main` |
+| Production URL | `https://receipt-ai-expense-tracker-eta.vercel.app` |
+| Deployment status | Ready |
+| AI verification mode | Mock-only; newly rotated provider keys were not available |
+
 ## Automated Gates
 
 | Gate | Status |
@@ -26,8 +36,10 @@ No server receipt CRUD, statistics, or Supabase routes remain.
 
 | Check | Status |
 | --- | --- |
+| Production app load | Pass at the stable Vercel alias |
 | `/api/health` | Pass with `mock_ai_mode: true`, cache/safe fallback enabled, and `storage: indexeddb` |
-| Mock parse | Pass through multipart `/api/receipts/parse`; returned mock provider/model metadata with no external call |
+| Mock parse | Pass through production multipart `/api/receipts/parse`; returned mock provider/model metadata with no external call |
+| Provider metadata | Pass: `provider_used`, `model_used`, `fallback_used`, `cached`, and `degraded_mode` |
 | Review before save | Pass |
 | IndexedDB save | Pass |
 | Receipt history | Pass |
@@ -36,11 +48,15 @@ No server receipt CRUD, statistics, or Supabase routes remain.
 | Delete flow | Pass; history returned to the empty state |
 | Browser console | Zero errors and zero warnings |
 | Framework error overlay | Not present |
+| Frontend bundle secret scan | Pass across 10 JavaScript assets |
+| API response secret scan | Pass |
+| Vercel runtime errors/warnings | None during verification |
 
 ## Credential State
 
 - `.env.local` contains no non-empty API key, token, or secret values.
-- Mock mode is enabled for local verification.
+- Production is intentionally deployed with `MOCK_AI_MODE=true`.
+- No provider API key is configured in Vercel.
 - Real provider parsing requires newly rotated server-side keys.
 - Previously exposed keys were not reused.
 - Repository and tracked-file scans found no provider key patterns.
@@ -59,4 +75,8 @@ No server receipt CRUD, statistics, or Supabase routes remain.
 
 ## Browser Tooling
 
-The Codex in-app browser runtime was denied by the Windows host. The same local end-to-end flow was completed with the Playwright CLI fallback against `http://localhost:3000`.
+Chrome loaded the production app, but the extension did not have permission to upload a local file. The complete production upload/save/reload/dashboard/delete flow was therefore verified with the Playwright CLI against the stable Vercel URL.
+
+## Remaining Production Task
+
+Rotate every previously posted provider key, configure only the replacement keys in Vercel, set `MOCK_AI_MODE=false`, redeploy, and run one non-sensitive real receipt parse. Real-provider behavior was not tested during this release.
