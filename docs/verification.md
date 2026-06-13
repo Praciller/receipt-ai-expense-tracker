@@ -52,6 +52,22 @@ No server receipt CRUD, statistics, or Supabase routes remain.
 | API response secret scan | Pass |
 | Vercel runtime errors/warnings | None during verification |
 
+## Supplied Image Compatibility
+
+Three supplied files were tested through the production API and visible upload
+flow:
+
+- Thai printed receipt JPEG: pass.
+- Thai handwritten cash-bill JPEG: pass.
+- English expense-report WebP: transport pass, but classified as a negative
+  non-receipt fixture.
+
+All files were below the 5 MB limit, returned HTTP 200 in mock mode, rendered
+the review UI, and produced zero browser console errors or warnings. Mock mode
+does not measure extraction accuracy. Expected real-AI fields, hashes, and
+licensing notes are recorded in
+[`receipt_test_matrix.md`](receipt_test_matrix.md).
+
 ## Credential State
 
 - `.env.local` contains no non-empty API key, token, or secret values.

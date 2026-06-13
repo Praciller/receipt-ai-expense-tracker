@@ -92,6 +92,9 @@ The app uses a `ReceiptRepository` interface so a synchronized backend can be ad
 
 Detailed rationale: [`docs/storage_architecture.md`](docs/storage_architecture.md)
 
+Receipt fixture compatibility and expected real-AI checks:
+[`docs/receipt_test_matrix.md`](docs/receipt_test_matrix.md)
+
 ## API Routes
 
 | Method | Route | Purpose |
