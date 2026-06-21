@@ -5,7 +5,7 @@ export function GET() {
   const providers = getConfiguredProviders();
   return NextResponse.json({
     ok: true,
-    mock_ai_mode: process.env.MOCK_AI_MODE === 'true',
+    mock_ai_mode: process.env.MOCK_AI_MODE !== 'false',
     provider_priority: providers.map((provider) => provider.name),
     image_providers: providers
       .filter((provider) => provider.supportsImageInput)

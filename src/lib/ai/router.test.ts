@@ -182,7 +182,31 @@ describe('parseWithProviders', () => {
 });
 
 describe('parseReceiptImage', () => {
+  it('defaults to deterministic mock mode when no provider mode is selected', async () => {
+    vi.stubEnv('MOCK_AI_MODE', '');
+    const cache: ParseCache = {
+      get: vi.fn(),
+      set: vi.fn(),
+    };
+    const providerCall = provider({
+      name: 'gemini',
+      supportsImageInput: true,
+      imageModels: ['gemini-primary'],
+      imageResult: JSON.stringify(validReceipt),
+    });
+
+    const result = await parseReceiptImage(imageInput, {
+      providers: [providerCall],
+      cache,
+    });
+
+    expect(result.provider_used).toBe('mock');
+    expect(providerCall.parseImage).not.toHaveBeenCalled();
+    expect(cache.get).not.toHaveBeenCalled();
+  });
+
   it('returns cached data before calling providers', async () => {
+    vi.stubEnv('MOCK_AI_MODE', 'false');
     const cachedReceipt = safeReceipt();
     const cache: ParseCache = {
       get: vi.fn().mockResolvedValue({
@@ -215,6 +239,7 @@ describe('parseReceiptImage', () => {
   });
 
   it('ignores invalid cached receipts and calls the provider', async () => {
+    vi.stubEnv('MOCK_AI_MODE', 'false');
     const cache: ParseCache = {
       get: vi.fn().mockResolvedValue({
         receipt: { ...safeReceipt(), date: 'not-a-date' },

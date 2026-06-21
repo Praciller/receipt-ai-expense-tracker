@@ -14,6 +14,11 @@
 /coverage
 /.cache/
 /.playwright-cli/
+__pycache__/
+*.py[cod]
+/reports/
+/ocr-output/
+/extracted-text/
 
 # next.js
 /.next/
@@ -21,6 +26,20 @@
 
 # production
 /build
+
+# private receipt data
+/test-slip/
+/uploads/
+/uploaded-receipts/
+*.jpg
+*.jpeg
+*.webp
+*.heic
+*.pdf
+*.db
+*.sqlite
+*.sqlite3
+*.duckdb
 
 # misc
 .DS_Store

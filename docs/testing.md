@@ -6,6 +6,8 @@
 npm run lint
 npm test
 npm run build
+python scripts/test_repo_guardrails.py
+python scripts/check_repo_guardrails.py
 ```
 
 Focused tests:
@@ -31,7 +33,7 @@ MOCK_AI_MODE=true
 NEXT_PUBLIC_STORAGE_MODE=indexeddb
 ```
 
-Then verify:
+Mock mode is the default. Then verify with a synthetic, non-sensitive placeholder image:
 
 1. Upload a JPG, PNG, or WebP.
 2. Parsed fields appear without automatic save.
@@ -41,7 +43,9 @@ Then verify:
 6. Confirm dashboard totals.
 7. Delete the receipt through inline confirmation.
 
-## Real AI
+Never commit the placeholder, a real receipt, or generated OCR output.
+
+## Optional Real AI
 
 Set `MOCK_AI_MODE=false`, add only newly rotated provider keys, and use a non-sensitive test receipt. `/api/health` reports configured provider capabilities but never returns keys.
 

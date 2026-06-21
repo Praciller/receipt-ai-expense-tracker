@@ -1,0 +1,34 @@
+{
+  "synthetic": true,
+  "description": "Fictional deterministic receipt for local portfolio review.",
+  "expected": {
+    "shop_name": "Synthetic Portfolio Cafe",
+    "date": "2025-06-13",
+    "items": [
+      {
+        "name": "Iced coffee",
+        "quantity": 1,
+        "unit_price": 85,
+        "total_price": 85
+      },
+      {
+        "name": "Bread",
+        "quantity": 1,
+        "unit_price": 45,
+        "total_price": 45
+      }
+    ],
+    "total_amount": 130,
+    "tax_id": null,
+    "category": "food",
+    "currency": "THB",
+    "confidence": 0.91,
+    "notes": "Synthetic mock result for local verification. Not accounting or tax advice."
+  },
+  "validation": {
+    "subtotal_amount": 130,
+    "tax_amount": null,
+    "total_matches_line_items": true,
+    "warnings": ["Tax was not provided in the synthetic fixture."]
+  }
+}

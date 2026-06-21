@@ -2,7 +2,7 @@
 
 ## Current Verdict
 
-Portfolio-ready as a local-first multimodal receipt workflow. Supabase is no longer a blocker or dependency.
+Local-first multimodal receipt workflow with a deterministic synthetic review path. Supabase is not a blocker or dependency.
 
 ## Material Changes
 
@@ -42,8 +42,8 @@ Portfolio-ready as a local-first multimodal receipt workflow. Supabase is no lon
 ## Reviewer Path
 
 1. Read the README flow and storage decision.
-2. Run with `MOCK_AI_MODE=true`.
-3. Upload any supported image.
+2. Follow [`docs/local_review.md`](docs/local_review.md) with mock mode enabled.
+3. Upload only the generated synthetic placeholder.
 4. Review and edit extracted fields.
 5. Save and inspect receipt history.
 6. Open the dashboard and verify aggregates.
@@ -53,3 +53,5 @@ Portfolio-ready as a local-first multimodal receipt workflow. Supabase is no lon
 ## Resume Positioning
 
 Built a local-first multimodal receipt expense tracker using Next.js, a capability-aware server-side AI provider router, Dexie/IndexedDB persistence, Thai and English normalization, Buddhist Era date handling, human review, reactive history, and client-side analytics.
+
+This is a portfolio decision-support demo, not accounting or tax advice, and it has not received a compliance audit.

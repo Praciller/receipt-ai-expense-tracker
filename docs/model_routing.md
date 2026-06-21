@@ -2,7 +2,7 @@
 
 ## Priority
 
-`AI_PROVIDER_PRIORITY` defaults to:
+External provider priority, used only when `MOCK_AI_MODE=false`, defaults to:
 
 ```text
 ninearm,gemini,groq,cerebras
@@ -72,4 +72,4 @@ If all providers fail and `ENABLE_SAFE_FALLBACK=true`, the route returns a valid
 
 ## Mock Mode
 
-`MOCK_AI_MODE=true` bypasses provider construction, cache reads, and all real API calls. Local persistence still uses the real IndexedDB repository.
+Mock mode is enabled unless `MOCK_AI_MODE=false` is explicitly selected. It bypasses provider construction, cache reads, and all real API calls. Local persistence still uses the real IndexedDB repository.

@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import syntheticFixture from '../../../fixtures/synthetic-receipt.json';
 import type { ParsedReceipt } from '../receipt';
 import {
   parseReceiptJson,
@@ -250,7 +251,7 @@ export async function parseReceiptImage(
   input: ReceiptImageInput,
   options: ParseReceiptImageOptions = {},
 ): Promise<ParsedReceiptResult> {
-  if (process.env.MOCK_AI_MODE === 'true') {
+  if (process.env.MOCK_AI_MODE !== 'false') {
     return {
       receipt: createMockReceipt(),
       provider_used: 'mock',
@@ -348,31 +349,11 @@ function createSafeFallbackReceipt(now: Date): ParsedReceipt {
 }
 
 function createMockReceipt(): ParsedReceipt {
-  return {
-    shop_name: 'ร้านตัวอย่าง Portfolio Cafe',
-    date: '2025-06-13',
-    items: [
-      {
-        name: 'กาแฟเย็น',
-        quantity: 1,
-        unit_price: 85,
-        total_price: 85,
-      },
-      {
-        name: 'ขนมปัง',
-        quantity: 1,
-        unit_price: 45,
-        total_price: 45,
-      },
-    ],
-    total_amount: 130,
-    tax_id: null,
-    category: 'food',
-    currency: 'THB',
-    confidence: 0.91,
-    notes: 'Mock AI result for local verification.',
-    parse_status: 'parsed',
-  };
+  const result = validateAndNormalizeReceipt(syntheticFixture.expected);
+  if (!result.success) {
+    throw new Error(`Invalid synthetic fixture: ${result.error}`);
+  }
+  return result.data;
 }
 
 function clampInteger(value: number, minimum: number, maximum: number) {

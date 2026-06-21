@@ -1,6 +1,6 @@
 # Receipt AI Expense Tracker
 
-Local-first multimodal expense tracker for Thai and English receipts. A server-side, capability-aware AI router parses receipt images, users review the structured result, and confirmed receipts stay in the browser through IndexedDB and Dexie.js.
+Local-first multimodal expense tracker for Thai and English receipts. The default zero-cost review path returns a deterministic synthetic result without API keys or network AI calls. Optional server-side providers can parse receipt images, users review the structured result, and confirmed receipts stay in the browser through IndexedDB and Dexie.js.
 
 Live deployment: [receipt-ai-expense-tracker-eta.vercel.app](https://receipt-ai-expense-tracker-eta.vercel.app)
 
@@ -39,15 +39,17 @@ AI parsing never saves automatically. The user confirms the shop, date, items, t
 | Analytics | Client-side aggregation and Recharts |
 | Testing | Vitest, Testing Library, fake-indexeddb |
 
-## Local Setup
+## Zero-Cost Local Review
 
 ```powershell
-npm install
-Copy-Item .env.example .env.local
+npm ci
+$env:MOCK_AI_MODE="true"
+$env:NEXT_PUBLIC_STORAGE_MODE="indexeddb"
+npm test
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open `http://localhost:3000`. Mock mode uses [`fixtures/synthetic-receipt.json`](fixtures/synthetic-receipt.json), requires no provider key, and makes no external AI call. See [`docs/local_review.md`](docs/local_review.md) for a synthetic placeholder-image command and expected output.
 
 ## Environment
 
@@ -57,13 +59,13 @@ Local-first storage requires no database credentials:
 NEXT_PUBLIC_STORAGE_MODE=indexeddb
 ```
 
-For a quota-free demo:
+Mock mode is the default:
 
 ```env
 MOCK_AI_MODE=true
 ```
 
-For real receipt parsing, disable mock mode and configure newly rotated server-side keys:
+For optional real receipt parsing, explicitly disable mock mode and configure server-side keys:
 
 ```env
 MOCK_AI_MODE=false
@@ -93,7 +95,18 @@ The app uses a `ReceiptRepository` interface so a synchronized backend can be ad
 Detailed rationale: [`docs/storage_architecture.md`](docs/storage_architecture.md)
 
 Receipt fixture compatibility and expected real-AI checks:
-[`docs/receipt_test_matrix.md`](docs/receipt_test_matrix.md)
+[`docs/extraction_methodology.md`](docs/extraction_methodology.md)
+
+## Deterministic Extraction Evidence
+
+The committed synthetic fixture records the expected merchant, date, currency, line items, subtotal evidence, tax availability, total, category, confidence, and validation warnings. Mock responses are validated through the same normalization code used for provider output.
+
+```powershell
+npm test -- src/lib/ai/router.test.ts src/app/api/receipts/parse/route.test.ts
+Get-Content fixtures/synthetic-receipt.json
+```
+
+No real receipt image, OCR output, bank slip, membership record, or private financial record is required or permitted in the repository.
 
 ## API Routes
 
@@ -132,10 +145,12 @@ Buddhist Era years such as `2568` normalize to `2025`. Short Thai years are conv
 ## Verification
 
 ```powershell
-npm install
+npm ci
 npm run lint
 npm test
 npm run build
+python scripts/test_repo_guardrails.py
+python scripts/check_repo_guardrails.py
 ```
 
 Automated coverage includes:
@@ -151,10 +166,14 @@ Automated coverage includes:
 ## Security
 
 - Receipt images reach the server only for parsing.
+- Mock mode is the default and does not send images to external AI providers.
 - AI provider credentials remain server-side.
 - The parse endpoint returns data but does not persist it.
-- Exposed provider keys from development must be revoked and replaced before real-AI testing.
+- Real receipts, uploads, OCR output, local databases, and environment files are ignored and rejected by repository guardrails.
 - Local IndexedDB records are not encrypted by this app.
+- Do not upload sensitive receipts to a public deployment.
+
+This portfolio demo is decision-support only. It is not accounting or tax advice, has not received a compliance audit, and does not guarantee financial accuracy.
 
 ## Known Limitations
 
@@ -162,12 +181,13 @@ Automated coverage includes:
 - Stored base64 images can consume browser quota faster than text-only records.
 - No user authentication, cloud sync, export/import, or multi-device support.
 - Direct image parsing requires at least one configured image-capable provider unless mock mode is enabled.
+- The deterministic fixture demonstrates pipeline behavior, not OCR accuracy on real documents.
 - The filesystem parse cache is local to one server instance and is not shared across deployments.
 - Short two-digit Thai years below `60` require manual review because they are ambiguous.
 
 ## Portfolio Review
 
-See [`PORTFOLIO_REVIEW.md`](PORTFOLIO_REVIEW.md) for verified behavior and remaining production limitations.
+See [`docs/portfolio_review.md`](docs/portfolio_review.md) for the exact reviewer flow and [`docs/extraction_methodology.md`](docs/extraction_methodology.md) for validation limits.
 
 ## License
 
