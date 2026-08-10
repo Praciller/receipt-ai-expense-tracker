@@ -141,10 +141,10 @@ function createGroqProvider() {
       false,
     ),
     imageModels: uniqueModels([
-      process.env.GROQ_RECEIPT_FALLBACK_MODEL ?? 'qwen/qwen3-32b',
+      process.env.GROQ_RECEIPT_FALLBACK_MODEL ?? 'qwen/qwen3.6-27b',
     ]),
     repairModel:
-      process.env.GROQ_JSON_REPAIR_MODEL ?? 'llama-3.1-8b-instant',
+      process.env.GROQ_JSON_REPAIR_MODEL ?? 'openai/gpt-oss-20b',
   });
 }
 

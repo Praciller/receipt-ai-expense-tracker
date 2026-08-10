@@ -44,6 +44,17 @@ describe('getConfiguredProviders', () => {
     });
   });
 
+  it('uses current tested Groq models when model overrides are absent', () => {
+    vi.stubEnv('AI_PROVIDER_PRIORITY', 'groq');
+    vi.stubEnv('GROQ_API_KEY', 'test-groq');
+    vi.stubEnv('GROQ_SUPPORTS_IMAGE_INPUT', 'true');
+
+    const provider = getConfiguredProviders()[0];
+
+    expect(provider.imageModels).toEqual(['qwen/qwen3.6-27b']);
+    expect(provider.repairModel).toBe('openai/gpt-oss-20b');
+  });
+
   it('sends 9arm images through OpenAI-compatible chat completions', async () => {
     vi.stubEnv('AI_PROVIDER_PRIORITY', 'ninearm');
     vi.stubEnv('NINEARM_API_KEY', 'test-ninearm');
