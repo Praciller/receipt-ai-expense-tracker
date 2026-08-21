@@ -5,24 +5,18 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
       - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm
           cache-dependency-path: package-lock.json
-      - name: Synchronize dependency lock
-        run: |
-          npm install --package-lock-only
-          npm audit fix --package-lock-only
       - run: npm ci
       - run: npm run lint
       - run: npm test
@@ -30,16 +24,6 @@ jobs:
       - run: npm audit --audit-level=high
       - run: python scripts/test_repo_guardrails.py
       - run: python scripts/check_repo_guardrails.py
-      - name: Persist dependency lock
-        if: github.event_name == 'push'
-        run: |
-          git add package-lock.json
-          if ! git diff --cached --quiet; then
-            git config user.name "repository-maintenance"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -m "Update dependency lock"
-            git push origin HEAD:${GITHUB_REF_NAME}
-          fi
       - name: Export review snapshot
         uses: actions/upload-artifact@v4
         with:
