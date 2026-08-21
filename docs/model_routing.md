@@ -1,22 +1,31 @@
-# AI Provider Routing
+# Inference Routing
 
-## Priority
+## Default Route
 
-External provider priority, used only when `MOCK_AI_MODE=false`, defaults to:
+`MOCK_AI_MODE=true` is the default. It returns the deterministic synthetic fixture, bypasses network inference and parse-cache reads, and preserves the real validation, review, and IndexedDB persistence flow.
 
-```text
-ninearm,gemini,groq,cerebras
+## Optional Generic External Route
+
+When `MOCK_AI_MODE=false`, the server constructs one vendor-neutral `external` adapter only when all required settings are present:
+
+```env
+EXTERNAL_AI_API_KEY=
+EXTERNAL_AI_BASE_URL=
+EXTERNAL_AI_MODEL=
+EXTERNAL_AI_CHAT_PATH=/v1/chat/completions
+EXTERNAL_AI_SUPPORTS_IMAGE_INPUT=true
+EXTERNAL_AI_FALLBACK_MODEL=
+EXTERNAL_AI_JSON_REPAIR_MODEL=
 ```
 
-The router constructs only providers with configured server-side API keys. Priority does not override capability checks.
+The repository does not prescribe which inference service implements that endpoint. Credentials remain server-side.
 
 ## Capability Rules
 
-- Receipt image parsing requires `supportsImageInput=true`.
-- 9arm is attempted first only when `NINEARM_SUPPORTS_IMAGE_INPUT=true`.
-- With the default `NINEARM_SUPPORTS_IMAGE_INPUT=false`, 9arm is skipped and Gemini is the first direct image provider.
-- Groq and Cerebras are text-only by default and can repair malformed JSON returned by an image provider.
-- Capability flags must match the real model and gateway. They do not add multimodal support to a text-only model.
+- Direct receipt parsing requires `EXTERNAL_AI_SUPPORTS_IMAGE_INPUT=true`.
+- The configured primary model is tried first; an optional fallback model may be tried next.
+- Malformed structured output may be sent through the configured JSON-repair model using the same generic external interface.
+- Capability flags must match the actual endpoint/model; configuration cannot add image support to a text-only model.
 
 ## Request Flow
 
@@ -24,52 +33,41 @@ The router constructs only providers with configured server-side API keys. Prior
 mock mode
   -> deterministic fixture, no cache or network
 
-real mode
+external mode
   -> cache lookup
-  -> filter configured providers for image capability
-  -> attempt provider/model in priority order
+  -> verify configured external image capability
+  -> attempt primary/fallback model
   -> retry failures up to AI_MAX_RETRIES
   -> validate and normalize structured receipt
-  -> on malformed output, try text/JSON repair providers
+  -> on malformed output, optional JSON repair
   -> cache valid result
-  -> return safe review_required result when all paths fail
+  -> return review_required safe fallback when all paths fail
 ```
 
-Network, timeout, malformed output, schema validation, and domain validation failures move routing to the next eligible model or provider. Retry delay uses `AI_RETRY_BACKOFF_SECONDS`; each request is bounded by `AI_TIMEOUT_SECONDS`.
-
-## Provider Implementations
-
-| Provider | Transport | Default role |
-| --- | --- | --- |
-| 9arm | OpenAI-compatible `/chat/completions` | First image candidate when explicitly enabled |
-| Gemini | Google GenAI SDK | Default direct image parser |
-| Groq | OpenAI-compatible chat completions | JSON repair fallback |
-| Cerebras | OpenAI-compatible chat completions | Last JSON repair fallback |
-
-All base URLs, keys, models, capability flags, priority, timeout, retry, and cache settings come from environment variables.
+Network, timeout, malformed output, schema validation, and domain validation failures remain bounded by the router. Retry delay uses `AI_RETRY_BACKOFF_SECONDS`; each request is bounded by `AI_TIMEOUT_SECONDS`.
 
 ## Cache
 
-When `ENABLE_AI_PARSE_CACHE=true`, the router hashes the image, MIME type, prompt version, provider order, models, and capability state before any provider call. Valid parses are cached under `AI_PARSE_CACHE_DIR` for `AI_PARSE_CACHE_TTL_SECONDS`.
+When `ENABLE_AI_PARSE_CACHE=true`, the router hashes the image, MIME type, prompt version, configured external route/model state, and capability state before an external call. Valid parses are cached under `AI_PARSE_CACHE_DIR` for `AI_PARSE_CACHE_TTL_SECONDS`.
 
 Mock results and degraded safe-fallback results are not written to the cache.
 
 ## Response Metadata
 
-When `RETURN_PROVIDER_METADATA=true`, parse responses include:
+When `RETURN_PROVIDER_METADATA=true`, parse responses include neutral metadata:
 
 ```json
 {
-  "provider_used": "gemini",
-  "model_used": "gemini-2.5-flash",
-  "fallback_used": true,
+  "provider_used": "external",
+  "model_used": "receipt-model",
+  "fallback_used": false,
   "cached": false,
   "degraded_mode": false
 }
 ```
 
-If all providers fail and `ENABLE_SAFE_FALLBACK=true`, the route returns a valid editable receipt with `parse_status="review_required"` and `degraded_mode=true`. It does not fabricate transaction details.
+If external parsing fails and `ENABLE_SAFE_FALLBACK=true`, the route returns an editable receipt with `parse_status="review_required"` and `degraded_mode=true`. It does not fabricate transaction details.
 
-## Mock Mode
+## Privacy Boundary
 
-Mock mode is enabled unless `MOCK_AI_MODE=false` is explicitly selected. It bypasses provider construction, cache reads, and all real API calls. Local persistence still uses the real IndexedDB repository.
+External mode sends the selected receipt image and extraction instructions to the configured endpoint. Use only an approved endpoint and non-sensitive test receipts until retention, access, and model behavior are verified. Mock mode avoids this data transfer entirely.
