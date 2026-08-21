@@ -20,7 +20,9 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - name: Synchronize dependency lock
-        run: npm install --package-lock-only
+        run: |
+          npm install --package-lock-only
+          npm audit fix --package-lock-only
       - run: npm ci
       - run: npm run lint
       - run: npm test
