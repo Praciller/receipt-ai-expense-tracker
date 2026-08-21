@@ -1,190 +1,53 @@
-import { GoogleGenAI } from '@google/genai';
-import { RECEIPT_PROMPT, RECEIPT_RESPONSE_SCHEMA } from './prompt';
-import type {
-  AiProviderName,
-  ReceiptAiProvider,
-  ReceiptImageInput,
-} from './router';
+import { RECEIPT_PROMPT } from './prompt';
+import type { ReceiptAiProvider, ReceiptImageInput } from './router';
 
-const DEFAULT_PRIORITY: AiProviderName[] = [
-  'ninearm',
-  'gemini',
-  'groq',
-  'cerebras',
-];
-
-interface OpenAiCompatibleOptions {
-  name: Exclude<AiProviderName, 'gemini'>;
+interface ExternalOptions {
   apiKey: string;
   baseUrl: string;
+  chatPath: string;
   supportsImageInput: boolean;
   imageModels: string[];
   repairModel?: string;
-  completionTokenField?: 'max_tokens' | 'max_completion_tokens';
 }
 
 export function getConfiguredProviders(): ReceiptAiProvider[] {
-  const factories: Record<AiProviderName, () => ReceiptAiProvider | null> = {
-    ninearm: createNinearmProvider,
-    gemini: createGeminiProvider,
-    groq: createGroqProvider,
-    cerebras: createCerebrasProvider,
-  };
-
-  return providerPriority().flatMap((name) => {
-    const provider = factories[name]();
-    return provider ? [provider] : [];
-  });
-}
-
-function createNinearmProvider() {
-  const apiKey = process.env.NINEARM_API_KEY;
-  if (!apiKey) {
-    return null;
+  const apiKey = process.env.EXTERNAL_AI_API_KEY?.trim();
+  const baseUrl = process.env.EXTERNAL_AI_BASE_URL?.trim();
+  const model = process.env.EXTERNAL_AI_MODEL?.trim();
+  if (!apiKey || !baseUrl || !model) {
+    return [];
   }
 
-  return createOpenAiCompatibleProvider({
-    name: 'ninearm',
-    apiKey,
-    baseUrl: process.env.NINEARM_BASE_URL ?? 'https://gateway.9arm.co/v1',
-    supportsImageInput: booleanEnvironment(
-      process.env.NINEARM_SUPPORTS_IMAGE_INPUT,
-      false,
-    ),
-    imageModels: uniqueModels([
-      process.env.NINEARM_RECEIPT_MODEL ?? 'qwen3.6-35b-a3b',
-      process.env.NINEARM_FALLBACK_MODEL ?? 'qwen3.6-35b-a3b',
-    ]),
-  });
-}
-
-function createGeminiProvider() {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return null;
-  }
-
-  const supportsImageInput = booleanEnvironment(
-    process.env.GEMINI_SUPPORTS_IMAGE_INPUT,
-    true,
-  );
-  const imageModels = uniqueModels([
-    process.env.GEMINI_RECEIPT_MODEL ?? 'gemini-2.5-flash',
-    process.env.GEMINI_RECEIPT_FALLBACK_MODEL ?? 'gemini-2.5-flash-lite',
-  ]);
-
-  return {
-    name: 'gemini',
-    supportsImageInput,
-    imageModels,
-    async parseImage(
-      input: ReceiptImageInput,
-      model: string,
-      signal: AbortSignal,
-    ) {
-      if (!supportsImageInput) {
-        throw new Error('Gemini image input is disabled.');
-      }
-
-      const baseUrl = process.env.GEMINI_BASE_URL?.trim();
-      const ai = new GoogleGenAI({
-        apiKey,
-        httpOptions: {
-          ...(baseUrl ? { baseUrl } : {}),
-          timeout: timeoutMs(),
-        },
-      });
-      const response = await ai.models.generateContent({
+  return [
+    createExternalProvider({
+      apiKey,
+      baseUrl,
+      chatPath:
+        process.env.EXTERNAL_AI_CHAT_PATH?.trim() || '/v1/chat/completions',
+      supportsImageInput: booleanEnvironment(
+        process.env.EXTERNAL_AI_SUPPORTS_IMAGE_INPUT,
+        true,
+      ),
+      imageModels: uniqueModels([
         model,
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              { text: RECEIPT_PROMPT },
-              {
-                inlineData: {
-                  data: input.base64Image,
-                  mimeType: input.mimeType,
-                },
-              },
-            ],
-          },
-        ],
-        config: {
-          temperature: 0,
-          responseMimeType: 'application/json',
-          responseJsonSchema: RECEIPT_RESPONSE_SCHEMA,
-          abortSignal: signal,
-        },
-      });
-
-      if (!response.text) {
-        throw new Error(`Gemini ${model} returned an empty response.`);
-      }
-      return response.text;
-    },
-  } satisfies ReceiptAiProvider;
+        process.env.EXTERNAL_AI_FALLBACK_MODEL ?? '',
+      ]),
+      repairModel: process.env.EXTERNAL_AI_JSON_REPAIR_MODEL?.trim() || model,
+    }),
+  ];
 }
 
-function createGroqProvider() {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) {
-    return null;
-  }
-
-  return createOpenAiCompatibleProvider({
-    name: 'groq',
-    apiKey,
-    baseUrl: process.env.GROQ_BASE_URL ?? 'https://api.groq.com/openai/v1',
-    supportsImageInput: booleanEnvironment(
-      process.env.GROQ_SUPPORTS_IMAGE_INPUT,
-      false,
-    ),
-    imageModels: uniqueModels([
-      process.env.GROQ_RECEIPT_FALLBACK_MODEL ?? 'qwen/qwen3.6-27b',
-    ]),
-    repairModel:
-      process.env.GROQ_JSON_REPAIR_MODEL ?? 'openai/gpt-oss-20b',
-  });
-}
-
-function createCerebrasProvider() {
-  const apiKey = process.env.CEREBRAS_API_KEY;
-  if (!apiKey) {
-    return null;
-  }
-
-  const model =
-    process.env.CEREBRAS_RECEIPT_FALLBACK_MODEL ?? 'gpt-oss-120b';
-  return createOpenAiCompatibleProvider({
-    name: 'cerebras',
-    apiKey,
-    baseUrl:
-      process.env.CEREBRAS_BASE_URL ?? 'https://api.cerebras.ai/v1',
-    supportsImageInput: booleanEnvironment(
-      process.env.CEREBRAS_SUPPORTS_IMAGE_INPUT,
-      false,
-    ),
-    imageModels: [model],
-    repairModel: model,
-    completionTokenField: 'max_completion_tokens',
-  });
-}
-
-function createOpenAiCompatibleProvider(
-  options: OpenAiCompatibleOptions,
-): ReceiptAiProvider {
+function createExternalProvider(options: ExternalOptions): ReceiptAiProvider {
   return {
-    name: options.name,
+    name: 'external',
     supportsImageInput: options.supportsImageInput,
     imageModels: options.imageModels,
     repairModel: options.repairModel,
     async parseImage(input, model, signal) {
       if (!options.supportsImageInput) {
-        throw new Error(`${options.name} image input is disabled.`);
+        throw new Error('External image input is disabled.');
       }
-
-      return requestOpenAiCompatible(
+      return requestExternal(
         options,
         model,
         [
@@ -206,7 +69,7 @@ function createOpenAiCompatibleProvider(
     },
     repairJson: options.repairModel
       ? (raw, model, signal) =>
-          requestOpenAiCompatible(
+          requestExternal(
             options,
             model,
             [
@@ -221,15 +84,14 @@ function createOpenAiCompatibleProvider(
   };
 }
 
-async function requestOpenAiCompatible(
-  options: OpenAiCompatibleOptions,
+async function requestExternal(
+  options: ExternalOptions,
   model: string,
   messages: unknown[],
   signal: AbortSignal,
 ) {
-  const tokenField = options.completionTokenField ?? 'max_tokens';
   const response = await fetch(
-    `${options.baseUrl.replace(/\/+$/, '')}/chat/completions`,
+    `${options.baseUrl.replace(/\/+$/, '')}${normalizePath(options.chatPath)}`,
     {
       method: 'POST',
       headers: {
@@ -239,7 +101,7 @@ async function requestOpenAiCompatible(
       body: JSON.stringify({
         model,
         temperature: 0,
-        [tokenField]: 1600,
+        max_tokens: 1600,
         messages,
       }),
       signal,
@@ -247,7 +109,7 @@ async function requestOpenAiCompatible(
   );
 
   if (!response.ok) {
-    throw new Error(`${options.name} returned HTTP ${response.status}.`);
+    throw new Error(`External inference returned HTTP ${response.status}.`);
   }
 
   const result = (await response.json()) as {
@@ -262,22 +124,13 @@ async function requestOpenAiCompatible(
     ? content.map((part) => part.text ?? '').join('')
     : content;
   if (!text) {
-    throw new Error(`${options.name} returned an empty response.`);
+    throw new Error('External inference returned an empty response.');
   }
   return text;
 }
 
-function providerPriority() {
-  const requested = (
-    process.env.AI_PROVIDER_PRIORITY ?? DEFAULT_PRIORITY.join(',')
-  )
-    .split(',')
-    .map((name) => name.trim().toLowerCase())
-    .filter((name): name is AiProviderName =>
-      DEFAULT_PRIORITY.includes(name as AiProviderName),
-    );
-
-  return [...new Set(requested)];
+function normalizePath(value: string) {
+  return value.startsWith('/') ? value : `/${value}`;
 }
 
 function uniqueModels(models: string[]) {
@@ -291,6 +144,4 @@ function booleanEnvironment(value: string | undefined, fallback: boolean) {
   return value.trim().toLowerCase() === 'true';
 }
 
-function timeoutMs() {
-  return Math.max(1, Number(process.env.AI_TIMEOUT_SECONDS ?? 30)) * 1000;
-}
+export type { ReceiptImageInput };

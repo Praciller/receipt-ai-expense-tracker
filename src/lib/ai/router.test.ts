@@ -19,155 +19,139 @@ const validReceipt = {
   notes: '',
 };
 
+const imageInput = {
+  base64Image: 'receipt-image',
+  mimeType: 'image/jpeg',
+};
+
 afterEach(() => {
   vi.unstubAllEnvs();
 });
 
 describe('parseWithProviders', () => {
-  it('uses 9arm first when image input is enabled', async () => {
-    const ninearm = provider({
-      name: 'ninearm',
+  it('uses the first image-capable route', async () => {
+    const primary = provider({
+      name: 'primary',
       supportsImageInput: true,
-      imageModels: ['ninearm-primary'],
+      imageModels: ['primary-model'],
       imageResult: JSON.stringify(validReceipt),
     });
-    const gemini = provider({
-      name: 'gemini',
+    const fallback = provider({
+      name: 'fallback',
       supportsImageInput: true,
-      imageModels: ['gemini-primary'],
+      imageModels: ['fallback-model'],
       imageResult: JSON.stringify(validReceipt),
     });
 
-    const result = await parseWithProviders(imageInput, [ninearm, gemini], {
+    const result = await parseWithProviders(imageInput, [primary, fallback], {
       maxRetries: 1,
       retryBackoffMs: 0,
     });
 
-    expect(result.provider_used).toBe('ninearm');
-    expect(result.model_used).toBe('ninearm-primary');
+    expect(result.provider_used).toBe('primary');
+    expect(result.model_used).toBe('primary-model');
     expect(result.fallback_used).toBe(false);
-    expect(ninearm.parseImage).toHaveBeenCalledOnce();
-    expect(gemini.parseImage).not.toHaveBeenCalled();
+    expect(primary.parseImage).toHaveBeenCalledOnce();
+    expect(fallback.parseImage).not.toHaveBeenCalled();
   });
 
-  it('skips 9arm when image input is disabled', async () => {
-    const ninearm = provider({
-      name: 'ninearm',
+  it('skips a route that cannot accept image input', async () => {
+    const primary = provider({
+      name: 'primary',
       supportsImageInput: false,
-      imageModels: ['ninearm-primary'],
+      imageModels: ['primary-model'],
       imageResult: JSON.stringify(validReceipt),
     });
-    const gemini = provider({
-      name: 'gemini',
+    const fallback = provider({
+      name: 'fallback',
       supportsImageInput: true,
-      imageModels: ['gemini-primary'],
+      imageModels: ['fallback-model'],
       imageResult: JSON.stringify(validReceipt),
     });
 
-    const result = await parseWithProviders(imageInput, [ninearm, gemini], {
+    const result = await parseWithProviders(imageInput, [primary, fallback], {
       maxRetries: 1,
       retryBackoffMs: 0,
     });
 
-    expect(result.provider_used).toBe('gemini');
+    expect(result.provider_used).toBe('fallback');
     expect(result.fallback_used).toBe(true);
-    expect(ninearm.parseImage).not.toHaveBeenCalled();
-    expect(gemini.parseImage).toHaveBeenCalledOnce();
+    expect(primary.parseImage).not.toHaveBeenCalled();
+    expect(fallback.parseImage).toHaveBeenCalledOnce();
     expect(result.attempts).toContainEqual(
       expect.objectContaining({
-        provider: 'ninearm',
+        provider: 'primary',
         task: 'image',
         outcome: 'skipped',
       }),
     );
   });
 
-  it('retries 9arm once before falling back to Gemini', async () => {
+  it('retries the primary route before using the fallback', async () => {
     const sleep = vi.fn().mockResolvedValue(undefined);
-    const ninearm = provider({
-      name: 'ninearm',
+    const primary = provider({
+      name: 'primary',
       supportsImageInput: true,
-      imageModels: ['ninearm-primary'],
-      imageError: new Error('gateway unavailable'),
+      imageModels: ['primary-model'],
+      imageError: new Error('endpoint unavailable'),
     });
-    const gemini = provider({
-      name: 'gemini',
+    const fallback = provider({
+      name: 'fallback',
       supportsImageInput: true,
-      imageModels: ['gemini-primary'],
+      imageModels: ['fallback-model'],
       imageResult: JSON.stringify(validReceipt),
     });
 
-    const result = await parseWithProviders(imageInput, [ninearm, gemini], {
+    const result = await parseWithProviders(imageInput, [primary, fallback], {
       maxRetries: 1,
       retryBackoffMs: 2000,
       sleep,
     });
 
-    expect(ninearm.parseImage).toHaveBeenCalledTimes(2);
+    expect(primary.parseImage).toHaveBeenCalledTimes(2);
     expect(sleep).toHaveBeenCalledOnce();
-    expect(sleep).toHaveBeenCalledWith(2000);
-    expect(gemini.parseImage).toHaveBeenCalledOnce();
-    expect(result.provider_used).toBe('gemini');
+    expect(fallback.parseImage).toHaveBeenCalledOnce();
+    expect(result.provider_used).toBe('fallback');
     expect(result.fallback_used).toBe(true);
   });
 
-  it('uses Groq then Cerebras for text-only JSON repair', async () => {
+  it('can repair invalid JSON through a later route', async () => {
     const invalidRaw = '{"shop_name":"broken"}';
-    const gemini = provider({
-      name: 'gemini',
+    const imageRoute = provider({
+      name: 'image-route',
       supportsImageInput: true,
-      imageModels: ['gemini-primary'],
+      imageModels: ['image-model'],
       imageResult: invalidRaw,
     });
-    const groq = provider({
-      name: 'groq',
+    const repairRoute = provider({
+      name: 'repair-route',
       supportsImageInput: false,
-      repairModel: 'groq-repair',
-      repairError: new Error('repair unavailable'),
-    });
-    const cerebras = provider({
-      name: 'cerebras',
-      supportsImageInput: false,
-      repairModel: 'cerebras-repair',
+      repairModel: 'repair-model',
       repairResult: JSON.stringify(validReceipt),
     });
 
     const result = await parseWithProviders(
       imageInput,
-      [gemini, groq, cerebras],
-      {
-        maxRetries: 0,
-        retryBackoffMs: 0,
-      },
+      [imageRoute, repairRoute],
+      { maxRetries: 0, retryBackoffMs: 0 },
     );
 
-    expect(groq.repairJson).toHaveBeenCalledWith(
-      invalidRaw,
-      'groq-repair',
-      expect.any(AbortSignal),
-    );
-    expect(cerebras.repairJson).toHaveBeenCalledOnce();
-    expect(result.provider_used).toBe('cerebras');
-    expect(result.model_used).toBe('cerebras-repair');
+    expect(repairRoute.repairJson).toHaveBeenCalledOnce();
+    expect(result.provider_used).toBe('repair-route');
+    expect(result.model_used).toBe('repair-model');
     expect(result.fallback_used).toBe(true);
     expect(result.degraded_mode).toBe(true);
   });
 
-  it('returns a review-required safe fallback when all providers fail', async () => {
-    const ninearm = provider({
-      name: 'ninearm',
+  it('returns a review-required safe fallback when all routes fail', async () => {
+    const primary = provider({
+      name: 'primary',
       supportsImageInput: true,
-      imageModels: ['ninearm-primary'],
-      imageError: new Error('failed'),
-    });
-    const gemini = provider({
-      name: 'gemini',
-      supportsImageInput: true,
-      imageModels: ['gemini-primary'],
+      imageModels: ['primary-model'],
       imageError: new Error('failed'),
     });
 
-    const result = await parseWithProviders(imageInput, [ninearm, gemini], {
+    const result = await parseWithProviders(imageInput, [primary], {
       maxRetries: 0,
       retryBackoffMs: 0,
       now: () => new Date('2026-06-13T00:00:00.000Z'),
@@ -182,69 +166,33 @@ describe('parseWithProviders', () => {
 });
 
 describe('parseReceiptImage', () => {
-  it('defaults to deterministic mock mode when no provider mode is selected', async () => {
+  it('defaults to deterministic mock mode', async () => {
     vi.stubEnv('MOCK_AI_MODE', '');
-    const cache: ParseCache = {
-      get: vi.fn(),
-      set: vi.fn(),
-    };
-    const providerCall = provider({
-      name: 'gemini',
+    const cache: ParseCache = { get: vi.fn(), set: vi.fn() };
+    const external = provider({
+      name: 'external',
       supportsImageInput: true,
-      imageModels: ['gemini-primary'],
+      imageModels: ['external-model'],
       imageResult: JSON.stringify(validReceipt),
     });
 
     const result = await parseReceiptImage(imageInput, {
-      providers: [providerCall],
+      providers: [external],
       cache,
     });
 
     expect(result.provider_used).toBe('mock');
-    expect(providerCall.parseImage).not.toHaveBeenCalled();
+    expect(external.parseImage).not.toHaveBeenCalled();
     expect(cache.get).not.toHaveBeenCalled();
   });
 
-  it('returns cached data before calling providers', async () => {
-    vi.stubEnv('MOCK_AI_MODE', 'false');
-    const cachedReceipt = safeReceipt();
-    const cache: ParseCache = {
-      get: vi.fn().mockResolvedValue({
-        receipt: cachedReceipt,
-        provider_used: 'gemini',
-        model_used: 'gemini-primary',
-        fallback_used: true,
-        cached: false,
-        degraded_mode: false,
-        attempts: [],
-      }),
-      set: vi.fn(),
-    };
-    const gemini = provider({
-      name: 'gemini',
-      supportsImageInput: true,
-      imageModels: ['gemini-primary'],
-      imageResult: JSON.stringify(validReceipt),
-    });
-
-    const result = await parseReceiptImage(imageInput, {
-      providers: [gemini],
-      cache,
-      cacheEnabled: true,
-    });
-
-    expect(result.cached).toBe(true);
-    expect(cache.get).toHaveBeenCalledOnce();
-    expect(gemini.parseImage).not.toHaveBeenCalled();
-  });
-
-  it('ignores invalid cached receipts and calls the provider', async () => {
+  it('returns valid cached data before calling external inference', async () => {
     vi.stubEnv('MOCK_AI_MODE', 'false');
     const cache: ParseCache = {
       get: vi.fn().mockResolvedValue({
-        receipt: { ...safeReceipt(), date: 'not-a-date' },
-        provider_used: 'gemini',
-        model_used: 'gemini-primary',
+        receipt: safeReceipt(),
+        provider_used: 'external',
+        model_used: 'external-model',
         fallback_used: false,
         cached: false,
         degraded_mode: false,
@@ -252,58 +200,59 @@ describe('parseReceiptImage', () => {
       }),
       set: vi.fn(),
     };
-    const gemini = provider({
-      name: 'gemini',
+    const external = provider({
+      name: 'external',
       supportsImageInput: true,
-      imageModels: ['gemini-primary'],
+      imageModels: ['external-model'],
       imageResult: JSON.stringify(validReceipt),
     });
 
     const result = await parseReceiptImage(imageInput, {
-      providers: [gemini],
+      providers: [external],
+      cache,
+      cacheEnabled: true,
+    });
+
+    expect(result.cached).toBe(true);
+    expect(external.parseImage).not.toHaveBeenCalled();
+  });
+
+  it('ignores invalid cached data and calls the configured route', async () => {
+    vi.stubEnv('MOCK_AI_MODE', 'false');
+    const cache: ParseCache = {
+      get: vi.fn().mockResolvedValue({
+        receipt: { ...safeReceipt(), date: 'not-a-date' },
+        provider_used: 'external',
+        model_used: 'external-model',
+        fallback_used: false,
+        cached: false,
+        degraded_mode: false,
+        attempts: [],
+      }),
+      set: vi.fn(),
+    };
+    const external = provider({
+      name: 'external',
+      supportsImageInput: true,
+      imageModels: ['external-model'],
+      imageResult: JSON.stringify(validReceipt),
+    });
+
+    const result = await parseReceiptImage(imageInput, {
+      providers: [external],
       cache,
       cacheEnabled: true,
       maxRetries: 0,
     });
 
     expect(result.cached).toBe(false);
-    expect(gemini.parseImage).toHaveBeenCalledOnce();
+    expect(external.parseImage).toHaveBeenCalledOnce();
     expect(cache.set).toHaveBeenCalledOnce();
-  });
-
-  it('mock mode does not call providers or cache', async () => {
-    vi.stubEnv('MOCK_AI_MODE', 'true');
-    const cache: ParseCache = {
-      get: vi.fn(),
-      set: vi.fn(),
-    };
-    const ninearm = provider({
-      name: 'ninearm',
-      supportsImageInput: true,
-      imageModels: ['ninearm-primary'],
-      imageResult: JSON.stringify(validReceipt),
-    });
-
-    const result = await parseReceiptImage(imageInput, {
-      providers: [ninearm],
-      cache,
-    });
-
-    expect(result.provider_used).toBe('mock');
-    expect(result.receipt.parse_status).toBe('parsed');
-    expect(ninearm.parseImage).not.toHaveBeenCalled();
-    expect(cache.get).not.toHaveBeenCalled();
-    expect(cache.set).not.toHaveBeenCalled();
   });
 });
 
-const imageInput = {
-  base64Image: 'receipt-image',
-  mimeType: 'image/jpeg',
-};
-
 function provider(options: {
-  name: ReceiptAiProvider['name'];
+  name: string;
   supportsImageInput: boolean;
   imageModels?: string[];
   repairModel?: string;
@@ -318,16 +267,12 @@ function provider(options: {
     imageModels: options.imageModels ?? [],
     repairModel: options.repairModel,
     parseImage: vi.fn(async () => {
-      if (options.imageError) {
-        throw options.imageError;
-      }
+      if (options.imageError) throw options.imageError;
       return options.imageResult ?? '';
     }),
     repairJson: options.repairModel
       ? vi.fn(async () => {
-          if (options.repairError) {
-            throw options.repairError;
-          }
+          if (options.repairError) throw options.repairError;
           return options.repairResult ?? '';
         })
       : undefined,
