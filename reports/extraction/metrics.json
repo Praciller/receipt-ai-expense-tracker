@@ -1,0 +1,126 @@
+{
+  "generated_from": "synthetic fixtures only",
+  "metrics": {
+    "fixture_count": 9,
+    "parse_success_rate": 0.6667,
+    "schema_valid_response_rate": 1,
+    "invalid_case_rejection_rate": 1,
+    "exact_match": 1,
+    "numeric_tolerance_match": 1,
+    "item_count_accuracy": 1,
+    "field_level_completeness": 1,
+    "validation_warning_accuracy": 1,
+    "reconciliation_status_accuracy": 1,
+    "item_mismatch_accuracy": 1
+  },
+  "cases": [
+    {
+      "id": "thai-convenience-be-full",
+      "expectedSuccess": true,
+      "schemaValid": true,
+      "exactMatch": 1,
+      "numericMatch": 1,
+      "itemCountMatch": 1,
+      "completeness": 1,
+      "warningMatch": 1,
+      "reconciliationStatusMatch": 1,
+      "itemMismatchMatch": 1
+    },
+    {
+      "id": "thai-restaurant-service-charge",
+      "expectedSuccess": true,
+      "schemaValid": true,
+      "exactMatch": 1,
+      "numericMatch": 1,
+      "itemCountMatch": 1,
+      "completeness": 1,
+      "warningMatch": 1,
+      "reconciliationStatusMatch": 1,
+      "itemMismatchMatch": 1
+    },
+    {
+      "id": "english-usd",
+      "expectedSuccess": true,
+      "schemaValid": true,
+      "exactMatch": 1,
+      "numericMatch": 1,
+      "itemCountMatch": 1,
+      "completeness": 1,
+      "warningMatch": 1,
+      "reconciliationStatusMatch": 1,
+      "itemMismatchMatch": 1
+    },
+    {
+      "id": "invalid-date",
+      "expectedSuccess": false,
+      "schemaValid": false,
+      "exactMatch": 0,
+      "numericMatch": 0,
+      "itemCountMatch": 0,
+      "completeness": 0,
+      "warningMatch": 1,
+      "reconciliationStatusMatch": 1,
+      "itemMismatchMatch": 1
+    },
+    {
+      "id": "missing-total",
+      "expectedSuccess": false,
+      "schemaValid": false,
+      "exactMatch": 0,
+      "numericMatch": 0,
+      "itemCountMatch": 0,
+      "completeness": 0,
+      "warningMatch": 1,
+      "reconciliationStatusMatch": 1,
+      "itemMismatchMatch": 1
+    },
+    {
+      "id": "mismatched-subtotal-total",
+      "expectedSuccess": true,
+      "schemaValid": true,
+      "exactMatch": 1,
+      "numericMatch": 1,
+      "itemCountMatch": 1,
+      "completeness": 1,
+      "warningMatch": 1,
+      "reconciliationStatusMatch": 1,
+      "itemMismatchMatch": 1
+    },
+    {
+      "id": "malformed-item-arithmetic",
+      "expectedSuccess": true,
+      "schemaValid": true,
+      "exactMatch": 1,
+      "numericMatch": 1,
+      "itemCountMatch": 1,
+      "completeness": 1,
+      "warningMatch": 1,
+      "reconciliationStatusMatch": 1,
+      "itemMismatchMatch": 1
+    },
+    {
+      "id": "unsupported-currency",
+      "expectedSuccess": false,
+      "schemaValid": false,
+      "exactMatch": 0,
+      "numericMatch": 0,
+      "itemCountMatch": 0,
+      "completeness": 0,
+      "warningMatch": 1,
+      "reconciliationStatusMatch": 1,
+      "itemMismatchMatch": 1
+    },
+    {
+      "id": "low-confidence",
+      "expectedSuccess": true,
+      "schemaValid": true,
+      "exactMatch": 1,
+      "numericMatch": 1,
+      "itemCountMatch": 1,
+      "completeness": 1,
+      "warningMatch": 1,
+      "reconciliationStatusMatch": 1,
+      "itemMismatchMatch": 1
+    }
+  ]
+}

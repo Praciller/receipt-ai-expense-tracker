@@ -1,0 +1,56 @@
+[
+  {
+    "id": "thai-convenience-be-full",
+    "description": "Synthetic Thai convenience-store receipt with Buddhist Era full year.",
+    "input": { "shop_name": "ร้านสะดวกซื้อจำลอง", "date": "13/06/2568", "items": [{ "name": "น้ำดื่ม", "quantity": 2, "unit_price": 10, "total_price": 20 }], "subtotal": 20, "tax_amount": 0, "discount": 0, "service_charge": 0, "total_amount": 20, "category": "shopping", "currency": "THB", "confidence": 0.95 },
+    "expected": { "success": true, "date": "2025-06-13", "warning_count": 0, "reconciliation_status": "reconciled", "item_mismatch_count": 0 }
+  },
+  {
+    "id": "thai-restaurant-service-charge",
+    "description": "Synthetic Thai restaurant receipt with service charge.",
+    "input": { "shop_name": "ร้านอาหารตัวอย่าง", "date": "13/06/68", "items": [{ "name": "อาหาร", "quantity": 1, "unit_price": 100, "total_price": 100 }], "subtotal": 100, "tax_amount": 7, "discount": 0, "service_charge": 10, "total_amount": 117, "category": "restaurant", "currency": "THB", "confidence": 0.9 },
+    "expected": { "success": true, "date": "2025-06-13", "warning_count": 1, "reconciliation_status": "review_required", "item_mismatch_count": 0 }
+  },
+  {
+    "id": "english-usd",
+    "description": "Synthetic English receipt.",
+    "input": { "shop_name": "Example Market", "date": "2025-06-13", "items": [{ "name": "Notebook", "quantity": 1, "unit_price": 5, "total_price": 5 }], "subtotal": 5, "tax_amount": 0, "discount": 0, "service_charge": 0, "total_amount": 5, "category": "office", "currency": "USD", "confidence": 0.88 },
+    "expected": { "success": true, "date": "2025-06-13", "warning_count": 0, "reconciliation_status": "reconciled", "item_mismatch_count": 0 }
+  },
+  {
+    "id": "invalid-date",
+    "description": "Synthetic impossible date.",
+    "input": { "shop_name": "Date Test", "date": "31/02/2568", "items": [], "total_amount": 10, "category": "other", "currency": "THB", "confidence": 0.9 },
+    "expected": { "success": false }
+  },
+  {
+    "id": "missing-total",
+    "description": "Synthetic missing grand total.",
+    "input": { "shop_name": "Missing Total", "date": "2025-06-13", "items": [], "category": "other", "currency": "THB", "confidence": 0.9 },
+    "expected": { "success": false }
+  },
+  {
+    "id": "mismatched-subtotal-total",
+    "description": "Synthetic inconsistent line items and total.",
+    "input": { "shop_name": "Mismatch Shop", "date": "2025-06-13", "items": [{ "name": "Item", "quantity": 1, "unit_price": 50, "total_price": 50 }], "subtotal": 60, "tax_amount": 0, "discount": 0, "service_charge": 0, "total_amount": 70, "category": "shopping", "currency": "THB", "confidence": 0.8 },
+    "expected": { "success": true, "date": "2025-06-13", "warning_count": 2, "reconciliation_status": "review_required", "item_mismatch_count": 0 }
+  },
+  {
+    "id": "malformed-item-arithmetic",
+    "description": "Synthetic line item whose extracted total disagrees with quantity multiplied by unit price.",
+    "input": { "shop_name": "Malformed Item Shop", "date": "2025-06-13", "items": [{ "name": "Item", "quantity": 2, "unit_price": 10, "total_price": 18 }], "total_amount": 18, "category": "shopping", "currency": "THB", "confidence": 0.9 },
+    "expected": { "success": true, "date": "2025-06-13", "warning_count": 1, "reconciliation_status": "review_required", "item_mismatch_count": 1 }
+  },
+  {
+    "id": "unsupported-currency",
+    "description": "Synthetic unsupported currency.",
+    "input": { "shop_name": "Currency Test", "date": "2025-06-13", "items": [], "total_amount": 10, "category": "other", "currency": "BTC", "confidence": 0.9 },
+    "expected": { "success": false }
+  },
+  {
+    "id": "low-confidence",
+    "description": "Synthetic low-confidence extraction.",
+    "input": { "shop_name": "Faint Print", "date": "2025-06-13", "items": [], "total_amount": 10, "category": "other", "currency": "THB", "confidence": 0.3 },
+    "expected": { "success": true, "date": "2025-06-13", "warning_count": 1, "reconciliation_status": "insufficient_evidence", "item_mismatch_count": 0, "parse_status": "review_required" }
+  }
+]

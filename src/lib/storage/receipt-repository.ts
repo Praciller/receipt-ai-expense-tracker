@@ -11,6 +11,7 @@ export interface ReceiptRepository {
   create(receipt: ParsedReceipt, image?: ReceiptImage): Promise<ReceiptRecord>;
   update(id: string, patch: unknown): Promise<ReceiptRecord | null>;
   delete(id: string): Promise<boolean>;
+  clear(): Promise<void>;
   observe(
     listener: (receipts: ReceiptRecord[]) => void,
     onError?: (error: unknown) => void,

@@ -7,8 +7,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:api": "vitest run src/app/api",
+    "test:storage": "vitest run src/lib/storage src/lib/stats.test.ts",
+    "test:evaluation": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/evaluate_extraction.ts",
+    "guardrails": "python scripts/test_repo_guardrails.py && python scripts/check_repo_guardrails.py",
+    "demo:mock": "npm run test:evaluation",
+    "clean": "node -e \"for(const p of ['.next','coverage','.cache'])require('node:fs').rmSync(p,{recursive:true,force:true})\""
   },
   "dependencies": {
     "@google/genai": "^2.8.0",

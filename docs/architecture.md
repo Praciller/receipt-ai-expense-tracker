@@ -6,7 +6,7 @@
 - `/api/receipts/parse` owns image validation and all server-side AI provider calls.
 - `src/lib/ai/router.ts` owns capability filtering, retry, fallback, validation, caching, and degraded results.
 - `src/lib/ai/providers.ts` owns environment-driven provider construction.
-- `src/lib/receipt.ts` owns structured validation and date/category normalization.
+- `src/lib/receipt.ts` owns structured validation, date/category normalization, and exact-decimal amount reconciliation.
 - `src/lib/storage/receipt-repository.ts` defines the persistence boundary.
 - `src/lib/storage/indexeddb-receipt-repository.ts` implements that boundary with Dexie.
 - `src/lib/stats.ts` calculates dashboard aggregates from local records.
@@ -20,7 +20,7 @@ JPG/PNG/WebP validation
   -> image-capable providers in configured priority
   -> retry and model/provider fallback
   -> optional Groq/Cerebras JSON repair
-  -> Zod/domain validation
+  -> Zod/domain validation and deterministic reconciliation evidence
   -> valid parse or review_required safe fallback
 ```
 
@@ -30,7 +30,7 @@ AI output is never saved automatically. If every provider fails, safe fallback r
 
 ```text
 reviewed ParsedReceipt
-  -> shared validation
+  -> shared validation and reconciliation recomputation
   -> ReceiptRepository.create
   -> Dexie receipts table
   -> liveQuery notification

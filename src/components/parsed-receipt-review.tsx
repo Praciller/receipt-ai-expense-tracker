@@ -13,6 +13,7 @@ interface ParsedReceiptReviewProps {
   provider: string;
   model: string;
   isSaving: boolean;
+  degradedMode?: boolean;
   onChange(receipt: ParsedReceipt): void;
   onSave(): void;
   onCancel(): void;
@@ -23,10 +24,16 @@ export function ParsedReceiptReview({
   provider,
   model,
   isSaving,
+  degradedMode = false,
   onChange,
   onSave,
   onCancel,
 }: ParsedReceiptReviewProps) {
+  const reconciliationWarnings = receipt.reconciliation_warnings ?? [];
+  const validationWarnings = receipt.warnings.filter(
+    (warning) => !reconciliationWarnings.includes(warning),
+  );
+
   const setField = <K extends keyof ParsedReceipt>(
     field: K,
     value: ParsedReceipt[K],
@@ -55,6 +62,33 @@ export function ParsedReceiptReview({
         </span>
       </div>
 
+      {degradedMode && (
+        <p role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+          Provider extraction degraded or fell back. Review every field before saving.
+        </p>
+      )}
+
+      {reconciliationWarnings.length > 0 && (
+        <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+          <p className="font-semibold">Reconciliation review signal</p>
+          <p className="mt-1 text-xs uppercase tracking-wide text-amber-800">
+            Status: {receipt.reconciliation_status?.replace('_', ' ') ?? 'review required'}
+          </p>
+          <ul className="mt-1 list-disc pl-5">
+            {reconciliationWarnings.map((warning) => <li key={warning}>{warning}</li>)}
+          </ul>
+        </div>
+      )}
+
+      {validationWarnings.length > 0 && (
+        <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+          <p className="font-semibold">Validation warnings</p>
+          <ul className="mt-1 list-disc pl-5">
+            {validationWarnings.map((warning) => <li key={warning}>{warning}</li>)}
+          </ul>
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Shop name">
           <input
@@ -73,7 +107,7 @@ export function ParsedReceiptReview({
             className="field"
           />
         </Field>
-        <Field label="Total amount (THB)">
+        <Field label={`Total amount (${receipt.currency})`}>
           <input
             type="number"
             min="0"
@@ -86,6 +120,23 @@ export function ParsedReceiptReview({
             className="field"
           />
         </Field>
+        <Field label="Currency">
+          <select value={receipt.currency} onChange={(event) => setField('currency', event.target.value as ParsedReceipt['currency'])} className="field">
+            {['THB', 'USD', 'EUR', 'GBP', 'SGD', 'JPY'].map((currency) => <option key={currency}>{currency}</option>)}
+          </select>
+        </Field>
+        {(['subtotal', 'tax_amount', 'discount', 'service_charge'] as const).map((field) => (
+          <Field key={field} label={field.replace('_', ' ')}>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={receipt[field] ?? ''}
+              onChange={(event) => setField(field, event.target.value === '' ? null : Number(event.target.value))}
+              className="field"
+            />
+          </Field>
+        ))}
         <Field label="Tax ID">
           <input
             value={receipt.tax_id ?? ''}
@@ -151,7 +202,7 @@ export function ParsedReceiptReview({
             {receipt.items.map((item, index) => (
               <div
                 key={`${index}-${item.name}`}
-                className="grid gap-3 rounded-xl border border-slate-200 p-3 sm:grid-cols-[minmax(0,1fr)_90px_120px_44px]"
+                className="grid gap-3 rounded-xl border border-slate-200 p-3 sm:grid-cols-[minmax(0,1fr)_80px_110px_110px_44px]"
               >
                 <input
                   aria-label={`Item ${index + 1} name`}
@@ -169,6 +220,17 @@ export function ParsedReceiptReview({
                   value={item.quantity}
                   onChange={(event) =>
                     updateItem(index, { quantity: Number(event.target.value) })
+                  }
+                  className="field"
+                />
+                <input
+                  aria-label={`Item ${index + 1} unit price`}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={item.unit_price}
+                  onChange={(event) =>
+                    updateItem(index, { unit_price: Number(event.target.value) })
                   }
                   className="field"
                 />

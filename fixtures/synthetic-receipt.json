@@ -4,6 +4,7 @@
   "expected": {
     "shop_name": "Synthetic Portfolio Cafe",
     "date": "2025-06-13",
+    "raw_date_text": "13/06/2568",
     "items": [
       {
         "name": "Iced coffee",
@@ -18,17 +19,31 @@
         "total_price": 45
       }
     ],
+    "subtotal": 130,
+    "tax_amount": 0,
+    "discount": 0,
+    "service_charge": 0,
     "total_amount": 130,
     "tax_id": null,
     "category": "food",
     "currency": "THB",
     "confidence": 0.91,
-    "notes": "Synthetic mock result for local verification. Not accounting or tax advice."
+    "notes": "Synthetic mock result for local verification. Not accounting or tax advice.",
+    "warnings": [],
+    "evidence": [
+      { "field": "shop_name", "text": "Synthetic Portfolio Cafe" },
+      { "field": "total_amount", "text": "TOTAL 130.00" }
+    ]
   },
   "validation": {
     "subtotal_amount": 130,
     "tax_amount": null,
     "total_matches_line_items": true,
+    "reconciliation_status": "reconciled",
+    "item_mismatch_count": 0,
+    "item_total_delta": 0,
+    "receipt_total_delta": 0,
+    "reconciliation_warnings": [],
     "warnings": ["Tax was not provided in the synthetic fixture."]
   }
 }

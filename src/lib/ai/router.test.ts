@@ -291,6 +291,9 @@ describe('parseReceiptImage', () => {
 
     expect(result.provider_used).toBe('mock');
     expect(result.receipt.parse_status).toBe('parsed');
+    expect(result.receipt.reconciliation_status).toBe('reconciled');
+    expect(result.receipt.item_mismatch_count).toBe(0);
+    expect(result.receipt.reconciliation_warnings).toEqual([]);
     expect(ninearm.parseImage).not.toHaveBeenCalled();
     expect(cache.get).not.toHaveBeenCalled();
     expect(cache.set).not.toHaveBeenCalled();
@@ -337,6 +340,24 @@ function provider(options: {
 function safeReceipt(): ParsedReceipt {
   return {
     ...validReceipt,
+    raw_date_text: '2025-06-13',
+    date_normalization: {
+      calendar: 'gregorian',
+      original_year: 2025,
+      converted: false,
+    },
+    subtotal: null,
+    tax_amount: null,
+    discount: null,
+    service_charge: null,
+    warnings: [],
+    evidence: [],
+    reconciliation_status: 'reconciled',
+    item_reconciliation: [],
+    item_mismatch_count: 0,
+    item_total_delta: 0,
+    receipt_total_delta: 0,
+    reconciliation_warnings: [],
     category: 'food',
     currency: 'THB',
     parse_status: 'parsed',
