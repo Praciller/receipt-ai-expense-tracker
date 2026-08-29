@@ -159,7 +159,7 @@ export async function parseWithProviders(
             task: 'image',
             attempt: attempt + 1,
             outcome: 'failed',
-            error: errorMessage(error),
+            error: normalizedProviderError(error),
           });
         }
 
@@ -218,7 +218,7 @@ export async function parseWithProviders(
             task: 'json_repair',
             attempt: attempt + 1,
             outcome: 'failed',
-            error: errorMessage(error),
+            error: normalizedProviderError(error),
           });
         }
 
@@ -336,14 +336,37 @@ function createSafeFallbackReceipt(now: Date): ParsedReceipt {
   return {
     shop_name: 'Review required',
     date: now.toISOString().slice(0, 10),
+    raw_date_text: null,
+    date_normalization: {
+      calendar: 'gregorian',
+      original_year: now.getUTCFullYear(),
+      converted: false,
+    },
     items: [],
+    subtotal: null,
+    tax_amount: null,
+    discount: null,
+    service_charge: null,
     total_amount: 0,
     tax_id: null,
     category: 'other',
     currency: 'THB',
     confidence: 0,
     notes:
-      'Automated parsing could not produce a valid result. Replace placeholder values before saving.',
+      'AI providers could not produce a valid result. Replace placeholder values before saving.',
+    warnings: [
+      'Provider extraction failed; all fields require manual review.',
+      'Unable to reconcile because no line items were extracted.',
+    ],
+    evidence: [],
+    reconciliation_status: 'insufficient_evidence',
+    item_reconciliation: [],
+    item_mismatch_count: 0,
+    item_total_delta: 0,
+    receipt_total_delta: 0,
+    reconciliation_warnings: [
+      'Unable to reconcile because no line items were extracted.',
+    ],
     parse_status: 'review_required',
   };
 }
@@ -363,8 +386,10 @@ function clampInteger(value: number, minimum: number, maximum: number) {
   return Math.min(maximum, Math.max(minimum, Math.floor(value)));
 }
 
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : 'Unknown inference error';
+function normalizedProviderError(error: unknown) {
+  return error instanceof Error && error.name === 'TimeoutError'
+    ? 'Provider request timed out.'
+    : 'Provider request failed.';
 }
 
 export class ReceiptParseError extends Error {

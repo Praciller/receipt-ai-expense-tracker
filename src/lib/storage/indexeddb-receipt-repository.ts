@@ -84,6 +84,10 @@ export class IndexedDbReceiptRepository implements ReceiptRepository {
     return true;
   }
 
+  async clear() {
+    await this.database.receipts.clear();
+  }
+
   observe(
     listener: (receipts: ReceiptRecord[]) => void,
     onError?: (error: unknown) => void,

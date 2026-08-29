@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { CheckCircle, Image as ImageIcon, Loader2, Upload } from 'lucide-react';
 import type { ParsedReceipt } from '@/lib/receipt';
@@ -33,6 +33,14 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
   const [imageBase64, setImageBase64] = useState('');
   const [imageMimeType, setImageMimeType] = useState('');
   const [parseResult, setParseResult] = useState<ParseResponse | null>(null);
+  const [mockMode, setMockMode] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    void fetch('/api/health')
+      .then((response) => response.json())
+      .then((health: { mock_ai_mode?: boolean }) => setMockMode(health.mock_ai_mode === true))
+      .catch(() => setMockMode(null));
+  }, []);
 
   const processFile = useCallback(async (file: File) => {
     setIsParsing(true);
@@ -139,12 +147,25 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-6">
+        <div className="mb-4 space-y-2" aria-live="polite">
+          <p className={`rounded-lg border p-3 text-sm ${mockMode === false ? 'border-amber-300 bg-amber-50 text-amber-950' : mockMode === true ? 'border-emerald-200 bg-emerald-50 text-emerald-950' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>
+            {mockMode === null
+              ? 'Checking extraction mode…'
+              : mockMode === false
+              ? 'Provider mode is enabled. Receipt images may be sent to a configured external AI provider.'
+              : 'Mock mode is the safe default: deterministic synthetic extraction with no external AI call.'}
+          </p>
+          <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-950">
+            Do not upload sensitive receipts to a public deployment. Use local mock mode for portfolio review.
+          </p>
+        </div>
         {parseResult ? (
           <ParsedReceiptReview
             receipt={parseResult.receipt}
             provider={parseResult.provider_used ?? 'ai'}
             model={parseResult.model_used ?? 'metadata-hidden'}
             isSaving={isSaving}
+            degradedMode={parseResult.degraded_mode === true}
             onChange={(receipt) => setParseResult({ ...parseResult, receipt })}
             onSave={() => void saveReceipt()}
             onCancel={reset}

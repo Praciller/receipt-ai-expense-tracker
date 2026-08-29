@@ -4,20 +4,42 @@ Local-first expense tracker for Thai and English receipts. The default review pa
 
 Live deployment: [receipt-ai-expense-tracker-eta.vercel.app](https://receipt-ai-expense-tracker-eta.vercel.app)
 
-## Product flow
+The current public deployment uses mock AI until newly rotated provider keys are configured.
 
-```text
-Receipt image
-  -> upload validation
-  -> POST /api/receipts/parse
-  -> deterministic mock or generic external inference
-  -> Zod validation and Buddhist Era date normalization
-  -> editable human review
-  -> IndexedDB save
-  -> receipt history and dashboard analytics
+## Why This Project Matters
+
+Receipt extraction crosses several trust boundaries: image upload, AI parsing, financial totals,
+date normalization, human review, and local storage. This project keeps each boundary explicit and
+defaults to a synthetic, zero-cost path so reviewers can validate behavior without uploading real
+financial documents.
+
+## 30-Second Reviewer Path
+
+1. Scan the upload and dashboard screenshots.
+2. Run the zero-cost local review with `MOCK_AI_MODE=true`.
+3. Inspect [`fixtures/synthetic-receipt.json`](fixtures/synthetic-receipt.json) and
+   [`reports/extraction/summary.md`](reports/extraction/summary.md).
+4. Review provider routing, storage architecture, and security/privacy docs.
+
+## Product Flow
+
+```mermaid
+flowchart LR
+  A[Receipt image] --> B[Parse API validation]
+  B --> C{Mock mode?}
+  C -->|Yes| D[Synthetic fixture]
+  C -->|No| E[Capability-aware providers]
+  D --> F[Normalization]
+  E --> F
+  F --> G[Deterministic reconciliation]
+  G --> H[Human review]
+  H -->|Explicit save| I[(Browser IndexedDB)]
+  I --> J[History and dashboard]
 ```
 
 Parsing never saves automatically. The user confirms the shop, date, items, total, category, tax ID, confidence, and notes before persistence.
+
+Amount flow is intentionally `AI extraction -> normalization -> deterministic reconciliation -> human review -> persistence`. Reconciliation checks arithmetic relationships and presents evidence; it does not silently change extracted values or establish accounting or tax correctness.
 
 ## Screenshots
 
@@ -37,13 +59,27 @@ Parsing never saves automatically. The user confirms the shop, date, items, tota
 | Analytics | Client-side aggregation and Recharts |
 | Testing | Vitest, Testing Library, fake-indexeddb |
 
-## Zero-cost local review
+## Key Engineering Evidence
+
+| Area | Evidence |
+| --- | --- |
+| AI workflow | Capability-aware provider routing with deterministic mock mode as the default |
+| Validation | Zod/domain checks for dates, totals, currencies, exact-decimal item math, and review warnings |
+| Evaluation | Nine synthetic extraction cases with schema, reconciliation, and field-level metrics |
+| Storage | Browser-local IndexedDB repository with no default cloud database |
+| Privacy | No real receipts, OCR output, local databases, or provider keys belong in Git |
+| UX | Human review is required before any parsed receipt is saved |
+
+## Zero-Cost Local Review
 
 ```powershell
 npm ci
 $env:MOCK_AI_MODE="true"
 $env:NEXT_PUBLIC_STORAGE_MODE="indexeddb"
+npm run typecheck
 npm test
+npm run test:evaluation
+npm run guardrails
 npm run dev
 ```
 
@@ -118,6 +154,7 @@ Receipt CRUD and statistics are browser-side operations, not server APIs.
 {
   "shop_name": "string",
   "date": "YYYY-MM-DD",
+  "raw_date_text": "string or null",
   "items": [
     {
       "name": "string",
@@ -126,32 +163,60 @@ Receipt CRUD and statistics are browser-side operations, not server APIs.
       "total_price": 0
     }
   ],
+  "subtotal": 0,
+  "tax_amount": 0,
+  "discount": 0,
+  "service_charge": 0,
   "total_amount": 0,
   "tax_id": null,
   "category": "food",
-  "currency": "THB",
+  "currency": "THB | USD | EUR | GBP | SGD | JPY",
   "confidence": 0.9,
+  "warnings": [],
+  "evidence": [{ "field": "total_amount", "text": "TOTAL 130.00" }],
+  "reconciliation_status": "reconciled",
+  "item_reconciliation": [],
+  "item_mismatch_count": 0,
+  "item_total_delta": 0,
+  "receipt_total_delta": 0,
+  "reconciliation_warnings": [],
   "notes": ""
 }
 ```
 
-Buddhist Era years such as `2568` normalize to `2025`. Short Thai years are converted only for the cautious `60-99` range. Impossible dates and negative totals fail validation.
+Buddhist Era years such as `2568` normalize to `2025`. Short Thai years are converted only for the cautious `60-99` range. Impossible dates, negative amounts, and unsupported currencies fail validation. Suspicious totals return review warnings.
+
+## Deterministic Amount Reconciliation
+
+After normalization, each line item is checked as `quantity × unit_price` against its extracted `total_price`. The normalized line-item sum is then compared with `total_amount`. Comparisons use exact decimal coefficients and a documented tolerance of one satang (`฿0.01`) for rounding; they do not use binary floating-point equality. The supported reconciliation bound is `1,000,000,000,000` currency units so evidence remains bounded.
+
+The result includes `reconciliation_status` (`reconciled`, `review_required`, or `insufficient_evidence`), per-item evidence, mismatch counts, signed deltas, and `reconciliation_warnings`. `item_total_delta` is extracted line total minus calculated line total; `receipt_total_delta` is line-item sum minus receipt total. A discount, tax, service charge, promotion, deposit, fee, or receipt rounding can explain a difference, so a mismatch is a review signal rather than an automatic rejection. The human reviewer remains authoritative and may save after checking or editing the values.
+
+## Offline Evaluation
+
+`npm run test:evaluation` evaluates nine synthetic cases and regenerates [`reports/extraction/summary.md`](reports/extraction/summary.md) plus machine-readable metrics. It measures exact fields, numeric tolerance, item counts, completeness, warning accuracy, reconciliation status, parse success, and schema validity. Synthetic results are not real-world OCR accuracy.
 
 ## Verification
 
 ```powershell
 npm ci
 npm run lint
+npm run typecheck
 npm test
+npm run test:api
+npm run test:storage
+npm run test:evaluation
 npm run build
-python scripts/test_repo_guardrails.py
-python scripts/check_repo_guardrails.py
+npm run guardrails
 ```
 
 Automated coverage includes:
 
 - Thai Buddhist Era and invalid-date normalization
 - structured receipt validation
+- exact-decimal item and receipt reconciliation, including insufficient evidence and rounding tolerance
+- provider priority, capability filtering, retry, cache, and fallback behavior
+- mock parse API behavior
 - inference routing, capability filtering, retry, cache, repair, and fallback behavior
 - deterministic parse API behavior
 - IndexedDB repository CRUD and live observation
@@ -183,6 +248,14 @@ This portfolio demo is decision-support only. It is not accounting or tax advice
 ## Portfolio review
 
 See [`docs/portfolio_review.md`](docs/portfolio_review.md) for the reviewer flow and [`docs/extraction_methodology.md`](docs/extraction_methodology.md) for validation limits.
+
+Architecture and portfolio details: [`docs/architecture.md`](docs/architecture.md), [`docs/evaluation.md`](docs/evaluation.md), [`docs/security_privacy.md`](docs/security_privacy.md), and [`docs/portfolio_case_study.md`](docs/portfolio_case_study.md).
+
+## Portfolio Bullet
+
+Built a local-first receipt AI expense tracker with Thai/English date and amount normalization,
+schema-validated AI extraction, human review before IndexedDB persistence, deterministic
+synthetic evaluation, provider capability routing, and privacy guardrails.
 
 ## License
 

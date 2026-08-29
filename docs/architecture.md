@@ -6,7 +6,7 @@
 - `/api/receipts/parse` owns image validation and all server-side inference calls.
 - `src/lib/ai/router.ts` owns capability filtering, retry, fallback, validation, caching, and degraded results.
 - `src/lib/ai/providers.ts` constructs the optional generic external inference adapter from server-side environment settings.
-- `src/lib/receipt.ts` owns structured validation and date/category normalization.
+- `src/lib/receipt.ts` owns structured validation, date/category normalization, and exact-decimal amount reconciliation.
 - `src/lib/storage/receipt-repository.ts` defines the persistence boundary.
 - `src/lib/storage/indexeddb-receipt-repository.ts` implements that boundary with Dexie.
 - `src/lib/stats.ts` calculates dashboard aggregates from local records.
@@ -20,7 +20,7 @@ JPG/PNG/WebP validation
   -> generic external image-capable endpoint when configured
   -> retry and model fallback
   -> optional JSON repair through the same neutral external interface
-  -> Zod/domain validation
+  -> Zod/domain validation and deterministic reconciliation evidence
   -> valid parse or review_required safe fallback
 ```
 
@@ -32,7 +32,7 @@ Inference output is never saved automatically. If all parsing paths fail, safe f
 
 ```text
 reviewed ParsedReceipt
-  -> shared validation
+  -> shared validation and reconciliation recomputation
   -> ReceiptRepository.create
   -> Dexie receipts table
   -> liveQuery notification

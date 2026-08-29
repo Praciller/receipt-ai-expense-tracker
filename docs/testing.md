@@ -25,6 +25,8 @@ npm test -- src/components/receipt-upload.test.tsx
 
 `fake-indexeddb` runs the Dexie repository contract in Vitest.
 
+Reconciliation coverage includes exact matches, quantity multiplication, satang values, one-satang rounding tolerance, item and receipt mismatches, multiple mismatches with cancelling deltas, empty items, bounded large values, invalid amounts, mock/API propagation, review warnings before save, and persistence-time recomputation. Tests assert that extracted totals are never silently corrected.
+
 ## Mock End-to-End
 
 Set:

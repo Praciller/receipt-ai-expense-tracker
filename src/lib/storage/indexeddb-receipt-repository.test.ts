@@ -9,6 +9,8 @@ import {
 const parsedReceipt: ParsedReceipt = {
   shop_name: 'Portfolio Cafe',
   date: '2025-06-13',
+  raw_date_text: '2025-06-13',
+  date_normalization: { calendar: 'gregorian', original_year: 2025, converted: false },
   items: [
     {
       name: 'Iced coffee',
@@ -17,12 +19,32 @@ const parsedReceipt: ParsedReceipt = {
       total_price: 85,
     },
   ],
+  subtotal: 85,
+  tax_amount: 0,
+  discount: 0,
+  service_charge: 0,
   total_amount: 85,
   tax_id: null,
   category: 'food',
   currency: 'THB',
   confidence: 0.92,
   notes: '',
+  warnings: [],
+  evidence: [],
+  reconciliation_status: 'reconciled',
+  item_reconciliation: [
+    {
+      item_index: 0,
+      expected_total: 85,
+      extracted_total: 85,
+      delta: 0,
+      matched: true,
+    },
+  ],
+  item_mismatch_count: 0,
+  item_total_delta: 0,
+  receipt_total_delta: 0,
+  reconciliation_warnings: [],
   parse_status: 'parsed',
 };
 
@@ -100,5 +122,41 @@ describe('IndexedDbReceiptRepository', () => {
     await observed;
 
     expect(observedCounts.at(-1)).toBe(1);
+  });
+
+  it('recomputes reconciliation evidence on save without correcting extracted values', async () => {
+    const repository = createRepository();
+    const editedReceipt: ParsedReceipt = {
+      ...parsedReceipt,
+      items: [{ ...parsedReceipt.items[0]!, quantity: 2, unit_price: 10, total_price: 18 }],
+      subtotal: null,
+      total_amount: 18,
+      reconciliation_status: 'reconciled',
+      item_reconciliation: [],
+      item_mismatch_count: 0,
+      item_total_delta: 0,
+      receipt_total_delta: 0,
+      reconciliation_warnings: [],
+    };
+
+    const saved = await repository.create(editedReceipt);
+
+    expect(saved.items[0]?.total_price).toBe(18);
+    expect(saved.reconciliation_status).toBe('review_required');
+    expect(saved.item_mismatch_count).toBe(1);
+    expect(saved.item_total_delta).toBe(-2);
+    expect(saved.reconciliation_warnings).toEqual([
+      '1 line item does not match quantity × unit price.',
+    ]);
+  });
+
+  it('clears all local receipt data', async () => {
+    const repository = createRepository();
+    await repository.create(parsedReceipt);
+    await repository.create({ ...parsedReceipt, shop_name: 'Another Shop' });
+
+    await repository.clear();
+
+    expect(await repository.list()).toEqual([]);
   });
 });
