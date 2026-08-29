@@ -43,8 +43,8 @@ describe('ReceiptUpload', () => {
             evidence: [],
             parse_status: 'parsed',
           },
-          provider_used: 'gemini',
-          model_used: 'gemini-2.5-flash-lite',
+          provider_used: 'external',
+          model_used: 'receipt-model',
           fallback_used: true,
           cached: false,
           degraded_mode: false,
@@ -61,9 +61,7 @@ describe('ReceiptUpload', () => {
     fireEvent.change(input, { target: { files: [file] } });
 
     expect(await screen.findByDisplayValue('Portfolio Cafe')).toBeInTheDocument();
-    expect(
-      screen.getByText('gemini · gemini-2.5-flash-lite'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('external · receipt-model')).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
 
     fireEvent.click(screen.getByRole('button', { name: /save receipt/i }));

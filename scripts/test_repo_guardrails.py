@@ -7,7 +7,7 @@ class GuardrailTests(unittest.TestCase):
     def test_rejects_private_receipts_secrets_databases_and_unsafe_claims(self):
         files = {
             "test-slip/private.jpg": b"",
-            ".env": b"GEMINI_API_KEY=secret",
+            ".env": b"EXTERNAL_AI_API_KEY=secret",
             "data/local.sqlite": b"",
             "README.md": b"tax " + b"compliant",
         }
@@ -20,7 +20,7 @@ class GuardrailTests(unittest.TestCase):
         files = {
             "fixtures/synthetic-receipt.json": b'{"synthetic": true}',
             "docs/screenshots/dashboard.png": b"",
-            ".env.example": b"GEMINI_API_KEY=",
+            ".env.example": b"EXTERNAL_AI_API_KEY=",
         }
 
         self.assertEqual(find_violations(files), [])

@@ -9,7 +9,7 @@ import { getFileParseCache } from './cache';
 import { RECEIPT_PROMPT } from './prompt';
 import { getConfiguredProviders } from './providers';
 
-export type AiProviderName = 'ninearm' | 'gemini' | 'groq' | 'cerebras';
+export type AiProviderName = 'external';
 
 export interface ReceiptImageInput {
   base64Image: string;
@@ -17,7 +17,7 @@ export interface ReceiptImageInput {
 }
 
 export interface ReceiptAiProvider {
-  name: AiProviderName;
+  name: AiProviderName | string;
   supportsImageInput: boolean;
   imageModels: string[];
   repairModel?: string;
@@ -242,7 +242,7 @@ export async function parseWithProviders(
   }
 
   throw new ReceiptParseError(
-    'No AI provider returned a valid receipt. Review the image manually.',
+    'No configured inference route returned a valid receipt. Review the image manually.',
     attempts,
   );
 }
@@ -306,7 +306,7 @@ export async function parseReceiptImage(
     try {
       await cache.set(cacheKey, result, ttlSeconds);
     } catch {
-      // Cache failure must not discard a valid provider result.
+      // Cache failure must not discard a valid result.
     }
   }
 
