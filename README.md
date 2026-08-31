@@ -6,6 +6,16 @@ Live deployment: [receipt-ai-expense-tracker-eta.vercel.app](https://receipt-ai-
 
 The current public deployment uses mock AI until newly rotated provider keys are configured.
 
+## Recruiter snapshot
+
+**Signal:** Thai/English receipt extraction with human review, schema validation, privacy-aware local storage, and analytics.
+
+[Repository](https://github.com/Praciller/receipt-ai-expense-tracker) · [Live demo](https://receipt-ai-expense-tracker-eta.vercel.app/) · [Dream Logs case study](https://dreamlogsdata.com/en/projects/receipt-ai-expense-tracker)
+
+**What this demonstrates:** extraction-to-review workflow · deterministic reconciliation warnings · browser-local persistence and analytics.
+
+**Boundary:** synthetic/mock-first by default; financial values are surfaced for human review and are never silently changed.
+
 ## Why This Project Matters
 
 Receipt extraction crosses several trust boundaries: image upload, AI parsing, financial totals,
@@ -20,6 +30,8 @@ financial documents.
 3. Inspect [`fixtures/synthetic-receipt.json`](fixtures/synthetic-receipt.json) and
    [`reports/extraction/summary.md`](reports/extraction/summary.md).
 4. Review provider routing, storage architecture, and security/privacy docs.
+
+The public UI also offers **Try sample receipt**: a clearly labeled synthetic fixture opens directly in review-only mode, without an external parse call or automatic save.
 
 ## Product Flow
 
