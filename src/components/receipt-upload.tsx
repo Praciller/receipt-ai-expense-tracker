@@ -4,7 +4,8 @@ import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { CheckCircle, Image as ImageIcon, Loader2, Upload } from 'lucide-react';
-import type { ParsedReceipt } from '@/lib/receipt';
+import syntheticFixture from '../../fixtures/synthetic-receipt.json';
+import { validateAndNormalizeReceipt, type ParsedReceipt } from '@/lib/receipt';
 import { getReceiptRepository } from '@/lib/storage/get-receipt-repository';
 import { ErrorState } from './error-state';
 import { ParsedReceiptReview } from './parsed-receipt-review';
@@ -34,6 +35,7 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
   const [imageMimeType, setImageMimeType] = useState('');
   const [parseResult, setParseResult] = useState<ParseResponse | null>(null);
   const [mockMode, setMockMode] = useState<boolean | null>(null);
+  const [isSample, setIsSample] = useState(false);
 
   useEffect(() => {
     void fetch('/api/health')
@@ -47,6 +49,7 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
     setError('');
     setSuccess('');
     setParseResult(null);
+    setIsSample(false);
 
     try {
       const dataUrl = await fileToBase64(file);
@@ -75,6 +78,28 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
       setIsParsing(false);
     }
   }, []);
+
+  const trySampleReceipt = () => {
+    const normalized = validateAndNormalizeReceipt(syntheticFixture.expected);
+    if (!normalized.success) {
+      setError(normalized.error);
+      return;
+    }
+
+    setError('');
+    setSuccess('');
+    setPreview('/sample-receipt.svg');
+    setImageBase64('');
+    setImageMimeType('image/svg+xml');
+    setParseResult({
+      receipt: normalized.data,
+      provider_used: 'mock',
+      model_used: 'deterministic-local-v1',
+      cached: false,
+      degraded_mode: false,
+    });
+    setIsSample(true);
+  };
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
@@ -136,6 +161,8 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
     setImageBase64('');
     setImageMimeType('');
     setError('');
+    setSuccess('');
+    setIsSample(false);
   };
 
   return (
@@ -165,6 +192,7 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
             provider={parseResult.provider_used ?? 'ai'}
             model={parseResult.model_used ?? 'metadata-hidden'}
             isSaving={isSaving}
+            sampleMode={isSample}
             degradedMode={parseResult.degraded_mode === true}
             onChange={(receipt) => setParseResult({ ...parseResult, receipt })}
             onSave={() => void saveReceipt()}
@@ -232,6 +260,18 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
                 >
                   Select image
                 </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={trySampleReceipt}
+                  disabled={isParsing || isSaving}
+                  className="mt-3"
+                >
+                  Try sample receipt
+                </Button>
+                <p className="mt-3 text-xs text-slate-500">
+                  Synthetic sample only; nothing is sent to an external provider or saved automatically.
+                </p>
               </div>
             )}
           </div>

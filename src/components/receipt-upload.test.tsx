@@ -134,4 +134,20 @@ describe('ReceiptUpload', () => {
     expect(screen.getByRole('button', { name: /save receipt/i })).not.toBeDisabled();
     expect(repositoryCreate).not.toHaveBeenCalled();
   });
+
+  it('opens the deterministic synthetic sample without parsing or saving it', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ mock_ai_mode: true }), { status: 200 }),
+    );
+
+    render(<ReceiptUpload />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /try sample receipt/i }));
+
+    expect(await screen.findByDisplayValue('Synthetic Portfolio Cafe')).toBeInTheDocument();
+    expect(screen.getByText('SAMPLE · review only')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sample is review-only/i })).toBeDisabled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(repositoryCreate).not.toHaveBeenCalled();
+  });
 });
