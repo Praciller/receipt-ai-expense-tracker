@@ -10,7 +10,7 @@ Version 1 uses IndexedDB through Dexie.js. Supabase is no longer a runtime, setu
 - Missing cloud credentials blocked an otherwise complete demo.
 - Server CRUD added deployment and secret-management work without improving the core receipt-review experience.
 - Receipt images and structured records fit IndexedDB better than `localStorage`.
-- Mock AI plus IndexedDB makes the entire review/save/history/dashboard flow testable without external quota or database access.
+- Mock AI supports review-flow testing but cannot be saved. Provider-backed results are required before IndexedDB persistence.
 
 ## Repository Boundary
 

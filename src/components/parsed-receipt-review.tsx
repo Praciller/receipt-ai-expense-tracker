@@ -13,7 +13,6 @@ interface ParsedReceiptReviewProps {
   provider: string;
   model: string;
   isSaving: boolean;
-  sampleMode?: boolean;
   degradedMode?: boolean;
   onChange(receipt: ParsedReceipt): void;
   onSave(): void;
@@ -25,7 +24,6 @@ export function ParsedReceiptReview({
   provider,
   model,
   isSaving,
-  sampleMode = false,
   degradedMode = false,
   onChange,
   onSave,
@@ -60,11 +58,6 @@ export function ParsedReceiptReview({
           </p>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
-          {sampleMode && (
-            <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-blue-800">
-              SAMPLE · review only
-            </span>
-          )}
           <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-800">
             {provider} · {model}
           </span>
@@ -309,8 +302,8 @@ export function ParsedReceiptReview({
         <Button type="button" variant="ghost" onClick={onCancel}>
           Choose another image
         </Button>
-        <Button type="button" onClick={onSave} disabled={isSaving || sampleMode}>
-          {isSaving ? 'Saving…' : sampleMode ? 'Sample is review-only' : 'Save receipt'}
+        <Button type="button" onClick={onSave} disabled={isSaving}>
+          {isSaving ? 'Saving…' : 'Save receipt'}
         </Button>
       </div>
     </section>

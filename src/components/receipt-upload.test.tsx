@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+﻿import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ReceiptUpload } from './receipt-upload';
 
@@ -56,6 +56,7 @@ describe('ReceiptUpload', () => {
 
     render(<ReceiptUpload />);
 
+    await screen.findByText(/local mock mode is explicitly enabled/i);
     const input = screen.getByLabelText(/receipt image/i);
     const file = new File(['receipt'], 'receipt.jpg', { type: 'image/jpeg' });
     fireEvent.change(input, { target: { files: [file] } });
@@ -110,8 +111,8 @@ describe('ReceiptUpload', () => {
               reconciliation_warnings: ['1 line item does not match quantity × unit price.'],
               parse_status: 'review_required',
             },
-            provider_used: 'mock',
-            model_used: 'deterministic-fixture',
+            provider_used: 'external',
+            model_used: 'receipt-model',
             cached: false,
             degraded_mode: false,
           }),
@@ -121,6 +122,7 @@ describe('ReceiptUpload', () => {
 
     render(<ReceiptUpload />);
 
+    await screen.findByText(/local mock mode is explicitly enabled/i);
     fireEvent.change(screen.getByLabelText(/receipt image/i), {
       target: { files: [new File(['receipt'], 'receipt.jpg', { type: 'image/jpeg' })] },
     });
@@ -136,19 +138,45 @@ describe('ReceiptUpload', () => {
     expect(repositoryCreate).not.toHaveBeenCalled();
   });
 
-  it('opens the deterministic synthetic sample without parsing or saving it', async () => {
+  it('disables upload and explains unavailable live extraction', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify({ mock_ai_mode: true }), { status: 200 }),
+      new Response(JSON.stringify({ mock_ai_mode: false, live_ready: false, readiness_message: 'Live extraction is unavailable. Configure an image-capable provider before uploading receipts.' }), { status: 200 }),
     );
 
     render(<ReceiptUpload />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /try sample receipt/i }));
-
-    expect(await screen.findByDisplayValue('Synthetic Portfolio Cafe')).toBeInTheDocument();
-    expect(screen.getByText('SAMPLE · review only')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /sample is review-only/i })).toBeDisabled();
+    expect(await screen.findByText(/configure an image-capable provider before uploading/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /select image/i })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /try sample receipt/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/sent to the configured external ai provider/i)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(repositoryCreate).not.toHaveBeenCalled();
+  });
+
+  it('allows local mock review but blocks persistence without a provider result', async () => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify({ mock_ai_mode: true }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        receipt: {
+          shop_name: 'Synthetic Cafe', date: '2025-06-13', raw_date_text: null,
+          date_normalization: { calendar: 'gregorian', original_year: 2025, converted: false },
+          items: [], subtotal: null, tax_amount: null, discount: null, service_charge: null,
+          total_amount: 100, tax_id: null, category: 'food', currency: 'THB',
+          confidence: 0.9, notes: '', warnings: [], evidence: [], parse_status: 'parsed',
+        },
+        provider_used: 'mock', model_used: 'deterministic-fixture', cached: false,
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+
+    render(<ReceiptUpload />);
+    await screen.findByText(/local mock mode is explicitly enabled/i);
+    fireEvent.change(screen.getByLabelText(/receipt image/i), {
+      target: { files: [new File(['receipt'], 'receipt.jpg', { type: 'image/jpeg' })] },
+    });
+    expect(await screen.findByDisplayValue('Synthetic Cafe')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /save receipt/i }));
+
+    expect(await screen.findByText(/only a result returned by a configured provider can be saved/i)).toBeInTheDocument();
     expect(repositoryCreate).not.toHaveBeenCalled();
   });
 });

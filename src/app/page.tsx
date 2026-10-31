@@ -36,7 +36,7 @@ export default function Home() {
                 <h1 className="text-lg font-semibold text-slate-950">
                   Receipt Ledger
                 </h1>
-                <p className="text-xs text-slate-500">Thai + English AI extraction</p>
+                <p className="text-xs text-slate-500">Thai + English receipt review</p>
               </div>
             </div>
 

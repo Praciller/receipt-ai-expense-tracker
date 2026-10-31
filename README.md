@@ -1,12 +1,12 @@
 # Receipt AI Expense Tracker
 
-Local-first expense tracker for Thai and English receipts. The default review path returns a deterministic synthetic result without external credentials or network inference. An optional generic server-side endpoint can parse receipt images; users review the structured result before confirmed receipts are stored in the browser through IndexedDB and Dexie.js.
+Local-first expense tracker for Thai and English receipts. Production requires a configured live image provider and fails closed when none is ready. Users review a genuine provider result before confirmed receipts are stored in browser IndexedDB. Synthetic fixtures are for opted-in local development and evaluation only.
 
 Live deployment: [receipt-ai-expense-tracker-eta.vercel.app](https://receipt-ai-expense-tracker-eta.vercel.app)
 
 **Deployment workflow:** The existing Vercel project is linked to [GitHub `Praciller/receipt-ai-expense-tracker`](https://github.com/Praciller/receipt-ai-expense-tracker). Merges to `main` trigger a production build via Vercel Git integration; check the corresponding deployment is `READY`, then verify the public [health endpoint](https://receipt-ai-expense-tracker-eta.vercel.app/api/health) and the production URL. Never publish provider credentials in Git.
 
-The current public deployment uses mock AI until newly rotated provider keys are configured.
+The public deployment requires live provider configuration; without it, image upload is disabled and the API returns HTTP 503. See [production live inference setup](docs/production-live-inference.md).
 
 ## Recruiter snapshot
 
@@ -16,7 +16,7 @@ The current public deployment uses mock AI until newly rotated provider keys are
 
 **What this demonstrates:** extraction-to-review workflow · deterministic reconciliation warnings · browser-local persistence and analytics.
 
-**Boundary:** synthetic/mock-first by default; financial values are surfaced for human review and are never silently changed.
+**Boundary:** provider output is surfaced for human review and is never silently changed. Production never substitutes a synthetic receipt when inference is unavailable.
 
 ## Why This Project Matters
 
@@ -33,22 +33,20 @@ financial documents.
    [`reports/extraction/summary.md`](reports/extraction/summary.md).
 4. Review provider routing, storage architecture, and security/privacy docs.
 
-The public UI also offers **Try sample receipt**: a clearly labeled synthetic fixture opens directly in review-only mode, without an external parse call or automatic save.
+The production UI has no sample receipt action. It reports provider readiness and disables upload when live image inference is unavailable.
 
 ## Product Flow
 
 ```mermaid
 flowchart LR
   A[Receipt image] --> B[Parse API validation]
-  B --> C{Mock mode?}
-  C -->|Yes| D[Synthetic fixture]
-  C -->|No| E[Capability-aware providers]
-  D --> F[Normalization]
-  E --> F
-  F --> G[Deterministic reconciliation]
-  G --> H[Human review]
-  H -->|Explicit save| I[(Browser IndexedDB)]
-  I --> J[History and dashboard]
+  B --> C{Live provider ready?}
+  C -->|No in production| D[HTTP 503; no receipt]
+  C -->|Yes| E[Live provider inference]
+  E --> F[Normalization and reconciliation]
+  F --> G[Human review with provider and model]
+  G -->|Explicit save| H[(Browser IndexedDB)]
+  H --> I[History and dashboard]
 ```
 
 Parsing never saves automatically. The user confirms the shop, date, items, total, category, tax ID, confidence, and notes before persistence.
@@ -67,7 +65,7 @@ Amount flow is intentionally `AI extraction -> normalization -> deterministic re
 | --- | --- |
 | App | Next.js 16, React 19, TypeScript |
 | Styling | Tailwind CSS 4 |
-| Inference | Deterministic mock by default; optional generic external endpoint |
+| Inference | Configured server-side image provider in production; local mock only when explicitly opted in |
 | Validation | Zod plus domain normalization |
 | Persistence | IndexedDB through Dexie.js |
 | Analytics | Client-side aggregation and Recharts |
@@ -77,7 +75,7 @@ Amount flow is intentionally `AI extraction -> normalization -> deterministic re
 
 | Area | Evidence |
 | --- | --- |
-| AI workflow | Capability-aware provider routing with deterministic mock mode as the default |
+| AI workflow | Provider readiness, production fail-closed behavior, local-only mock evaluation |
 | Validation | Zod/domain checks for dates, totals, currencies, exact-decimal item math, and review warnings |
 | Evaluation | Nine synthetic extraction cases with schema, reconciliation, and field-level metrics |
 | Storage | Browser-local IndexedDB repository with no default cloud database |
@@ -107,7 +105,7 @@ Local-first storage requires no database credentials:
 NEXT_PUBLIC_STORAGE_MODE=indexeddb
 ```
 
-Mock mode is the default:
+Local synthetic mock mode must be explicitly enabled:
 
 ```env
 MOCK_AI_MODE=true
@@ -119,14 +117,14 @@ Optional external parsing is explicit and server-side only:
 MOCK_AI_MODE=false
 EXTERNAL_AI_API_KEY=
 EXTERNAL_AI_BASE_URL=
-EXTERNAL_AI_CHAT_PATH=/v1/chat/completions
-EXTERNAL_AI_MODEL=
+EXTERNAL_AI_CHAT_PATH=/v1beta/openai/chat/completions
+EXTERNAL_AI_MODEL=gemini-3.8-flash
 EXTERNAL_AI_FALLBACK_MODEL=
 EXTERNAL_AI_JSON_REPAIR_MODEL=
 EXTERNAL_AI_SUPPORTS_IMAGE_INPUT=true
 ```
 
-Never expose an inference credential through a public frontend variable. See [`docs/model_routing.md`](docs/model_routing.md) for retry, cache, validation, and degraded-mode behavior.
+Never expose an inference credential through a public frontend variable. For exact Vercel configuration and public endpoint limits, see [`docs/production-live-inference.md`](docs/production-live-inference.md). See [`docs/model_routing.md`](docs/model_routing.md) for routing and validation behavior.
 
 ## Local-first storage
 
@@ -241,7 +239,7 @@ Automated coverage includes:
 ## Security
 
 - Receipt images reach the server only for parsing.
-- Mock mode is the default and does not send images to a network inference endpoint.
+- Explicit local mock mode does not send images to a network inference endpoint; production ignores mock mode.
 - Optional external credentials remain server-side.
 - The parse endpoint returns data but does not persist it.
 - Real receipts, uploads, OCR output, local databases, and environment files are ignored and rejected by repository guardrails.
