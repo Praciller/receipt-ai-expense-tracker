@@ -97,6 +97,36 @@ function configureExternalEnvironment() {
   vi.stubEnv('EXTERNAL_AI_SUPPORTS_IMAGE_INPUT', 'true');
 }
 
+describe('Gemini 3.8 Flash request configuration', () => {
+  it('uses low reasoning and a sufficient JSON output budget, without deprecated sampling values', async () => {
+    configureExternalEnvironment();
+    vi.stubEnv('EXTERNAL_AI_BASE_URL', 'https://generativelanguage.googleapis.com');
+    vi.stubEnv('EXTERNAL_AI_CHAT_PATH', '/v1beta/openai/chat/completions');
+    vi.stubEnv('EXTERNAL_AI_MODEL', 'gemini-3.8-flash');
+    vi.stubEnv('EXTERNAL_AI_FALLBACK_MODEL', '');
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({ choices: [{ message: { content: '{"shop_name":"Test"}' } }] }),
+        { status: 200 },
+      ),
+    );
+    const provider = getConfiguredProviders()[0];
+    expect(provider.name).toBe('gemini');
+    await provider.parseImage(
+      { base64Image: 'image-data', mimeType: 'image/png' },
+      'gemini-3.8-flash',
+      new AbortController().signal,
+    );
+    const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    expect(body.reasoning_effort).toBe('low');
+    expect(body.max_tokens).toBe(4096);
+    expect(body.temperature).toBeUndefined();
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+    );
+  });
+});
+
 describe('Groq free vision provider', () => {
   it('keeps Groq unconfigured until a dedicated API key exists', () => {
     vi.stubEnv('GROQ_API_KEY', '');

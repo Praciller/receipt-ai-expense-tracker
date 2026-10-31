@@ -112,6 +112,74 @@ describe('validateAndNormalizeReceipt', () => {
     }
   });
 
+  it('reconciles line items against subtotal when VAT is added to the grand total', () => {
+    const result = validateAndNormalizeReceipt({
+      shop_name: 'Test Cafe',
+      date: '2026-10-31',
+      items: [
+        { name: 'Tea', quantity: 2, unit_price: 55, total_price: 110 },
+        { name: 'Bread', quantity: 1, unit_price: 40, total_price: 40 },
+      ],
+      subtotal: 150,
+      tax_amount: 10.5,
+      total_amount: 160.5,
+      category: 'food',
+      currency: 'THB',
+      confidence: 0.95,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.reconciliation_status).toBe('reconciled');
+      expect(result.data.receipt_total_delta).toBe(0);
+      expect(result.data.reconciliation_warnings).toEqual([]);
+      expect(result.data.total_amount).toBe(160.5);
+    }
+  });
+
+  it('reconciles discounted items when the subtotal is unavailable', () => {
+    const result = validateAndNormalizeReceipt({
+      shop_name: 'Test Stationery',
+      date: '2026-10-31',
+      items: [
+        { name: 'Notebook', quantity: 2, unit_price: 65, total_price: 130 },
+        { name: 'Pen', quantity: 3, unit_price: 20, total_price: 60 },
+      ],
+      discount: 10,
+      total_amount: 180,
+      category: 'office',
+      currency: 'THB',
+      confidence: 0.95,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.reconciliation_status).toBe('reconciled');
+      expect(result.data.receipt_total_delta).toBe(0);
+      expect(result.data.reconciliation_warnings).toEqual([]);
+    }
+  });
+
+  it('still flags a subtotal mismatch even when the grand total breakdown balances', () => {
+    const result = validateAndNormalizeReceipt({
+      shop_name: 'Suspicious Shop',
+      date: '2026-10-31',
+      items: [{ name: 'Item', quantity: 1, unit_price: 100, total_price: 100 }],
+      subtotal: 105,
+      tax_amount: 5,
+      total_amount: 110,
+      category: 'shopping',
+      currency: 'THB',
+      confidence: 0.6,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.reconciliation_status).toBe('review_required');
+      expect(result.data.receipt_total_delta).toBe(-5);
+      expect(result.data.reconciliation_warnings).toContain(
+        'Line-item sum differs from receipt subtotal by ฿5.00.',
+      );
+    }
+  });
+
   it('uses quantity in exact decimal line-item arithmetic', () => {
     const result = validateAndNormalizeReceipt({
       shop_name: 'Quantity Shop',
