@@ -4,6 +4,8 @@ Local-first expense tracker for Thai and English receipts. The default review pa
 
 Live deployment: [receipt-ai-expense-tracker-eta.vercel.app](https://receipt-ai-expense-tracker-eta.vercel.app)
 
+**Deployment workflow:** The existing Vercel project is linked to [GitHub `Praciller/receipt-ai-expense-tracker`](https://github.com/Praciller/receipt-ai-expense-tracker). Merges to `main` trigger a production build via Vercel Git integration; check the corresponding deployment is `READY`, then verify the public [health endpoint](https://receipt-ai-expense-tracker-eta.vercel.app/api/health) and the production URL. Never publish provider credentials in Git.
+
 The current public deployment uses mock AI until newly rotated provider keys are configured.
 
 ## Recruiter snapshot
