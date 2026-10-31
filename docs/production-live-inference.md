@@ -16,7 +16,7 @@ ENABLE_SAFE_FALLBACK=false
 AI_MAX_RETRIES=0
 ```
 
-Enter the key only in Vercel's encrypted environment variable editor. Never put it in a repository file, commit, issue, chat, browser variable, or log. Redeploy after setting the values, then confirm `/api/health` reports `live_ready: true` and `mock_ai_mode: false`. This project has not verified a live Gemini request unless a valid key was supplied and the deployment was exercised; local tests do not establish provider connectivity.
+Enter the key only in Vercel's encrypted environment variable editor. Never put it in a repository file, commit, issue, chat, browser variable, or log. Redeploy after setting the values, then confirm `/api/health` reports `live_ready: true` and `mock_ai_mode: false`. Gemini 3.8 Flash uses `reasoning_effort=low` and a larger 4096-token maximum to avoid JSON truncation from default thinking. A readiness check only confirms credentials are present; it does not prove that the provider can successfully parse an image.
 
 ## Groq Qwen 3.8 Vision (independent API key)
 
@@ -31,6 +31,8 @@ This is a provider integration, **not** a real-world accuracy claim. Compare bot
 A Vercel Firewall rule named **Receipt AI Vision Free Quota** is currently enabled for `/api/receipts/parse`: **5 requests per 600 seconds per source IP**, fixed window, deny when exceeded. This is platform-level rate limiting (not an in-memory serverless counter). It protects against a single noisy IP but is **not a daily or organization-wide quota**: distributed traffic can still exhaust Groq/Gemini's account free allowance. Inspect the rule and provider usage after changes; adjust it only after confirming account limits.
 
 The endpoint also validates image MIME type and size. No paid model, key rotation, daily budget enforcement, or inference costs should be assumed safe solely because a rate limit exists. Use only an unbilled free-tier provider project, and verify the current account rate limits in each provider console.
+
+When a provider fallback succeeds, Vercel runtime logs contain only provider/model names, task, result category and sanitized HTTP status; they do **not** contain API keys, source images, receipt text, or raw provider errors. These diagnostics help distinguish rate limits (`http_429`), unavailable providers (`http_503`) and invalid model output (`invalid_schema`).
 
 Receipt images submitted to a live provider leave the browser and are sent to that provider for inference. Upload only non-sensitive images and follow the provider's current data handling terms.
 

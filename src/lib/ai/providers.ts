@@ -123,8 +123,11 @@ async function requestExternal(
       },
       body: JSON.stringify({
         model,
-        temperature: 0,
-        max_tokens: 1600,
+        // Gemini 3.8 uses thinking by default. A low reasoning budget and
+        // enough output room avoid truncating JSON during extraction.
+        ...(options.name === 'gemini'
+          ? { reasoning_effort: 'low', max_tokens: 4096 }
+          : { temperature: 0, max_tokens: 1600 }),
         messages,
         ...(options.jsonMode ? { response_format: { type: 'json_object' } } : {}),
       }),

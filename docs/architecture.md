@@ -5,7 +5,7 @@
 - The browser owns image selection, editable review, receipt persistence, history, and analytics.
 - `/api/receipts/parse` owns image validation and all server-side inference calls.
 - `src/lib/ai/router.ts` owns capability filtering, retry, fallback, validation, caching, and degraded results.
-- `src/lib/ai/providers.ts` constructs the optional generic external inference adapter from server-side environment settings.
+- `src/lib/ai/providers.ts` configures Gemini and Groq vision adapters from independent server-side API keys; `src/lib/ai/provider-diagnostics.ts` reduces failures to privacy-safe operational categories.
 - `src/lib/receipt.ts` owns structured validation, date/category normalization, and exact-decimal amount reconciliation.
 - `src/lib/storage/receipt-repository.ts` defines the persistence boundary.
 - `src/lib/storage/indexeddb-receipt-repository.ts` implements that boundary with Dexie.
@@ -27,6 +27,8 @@ production readiness check (live image provider required)
 An explicitly opted-in local mock mode is available for development and tests only. Production ignores mock mode and never returns a synthetic receipt or safe fallback.
 
 Only a genuine provider result can enter receipt review and be explicitly saved. Inference output is never saved automatically. If live parsing fails in production, the API returns HTTP 503 without receipt data.
+
+Reconciliation compares item sums with an explicitly extracted subtotal, or with a total adjusted by available tax, discount, and service-charge values. This avoids a false warning when the final payable amount legitimately differs from the sum of pre-tax items. The `receipt_total_delta` field records the item-versus-comparable-base difference; the original extracted amounts are never altered. An inconsistent subtotal or financial breakdown still requires review.
 
 ## Persistence Sequence
 

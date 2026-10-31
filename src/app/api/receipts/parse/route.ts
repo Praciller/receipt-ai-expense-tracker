@@ -4,6 +4,7 @@ import {
   ReceiptParseError,
 } from '@/lib/ai/router';
 import { getConfiguredProviders } from '@/lib/ai/providers';
+import { summarizeProviderFailures } from '@/lib/ai/provider-diagnostics';
 
 const ALLOWED_IMAGE_TYPES = new Set([
   'image/jpeg',
@@ -47,6 +48,15 @@ export async function POST(request: NextRequest) {
       base64Image: image.base64Image,
       mimeType: image.mimeType,
     });
+
+    if (process.env.NODE_ENV === 'production' && result.fallback_used) {
+      // Runtime-only diagnostics: never log image bytes, receipt fields, or
+      // upstream error text, which can contain sensitive customer data.
+      console.warn(
+        '[receipt-ai] provider fallback',
+        JSON.stringify(summarizeProviderFailures(result.attempts)),
+      );
+    }
 
     const responseBody: Record<string, unknown> = {
       receipt: result.receipt,

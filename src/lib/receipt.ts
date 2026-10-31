@@ -584,7 +584,32 @@ export function validateAndNormalizeReceipt(
     (sum, { totalPrice }) => decimalAdd(sum, totalPrice!),
     exactDecimal('0')!,
   );
-  const receiptTotalDelta = decimalSubtract(lineItemTotal, totalDecimal);
+  const subtotalDecimal = optionalAmountDecimals[0];
+  const taxAmountDecimal = optionalAmountDecimals[1];
+  const discountDecimal = optionalAmountDecimals[2];
+  const serviceChargeDecimal = optionalAmountDecimals[3];
+  const hasFinancialAdjustments =
+    taxAmountDecimal !== null ||
+    discountDecimal !== null ||
+    serviceChargeDecimal !== null;
+
+  // Line items normally sum to the subtotal, not the final taxed/discounted
+  // amount. When subtotal is omitted, infer the comparable base from the
+  // explicitly extracted adjustments without changing financial values.
+  const comparisonTotal = subtotalDecimal ??
+    (hasFinancialAdjustments
+      ? decimalAdd(
+          decimalSubtract(
+            decimalSubtract(
+              totalDecimal,
+              taxAmountDecimal ?? exactDecimal('0')!,
+            ),
+            serviceChargeDecimal ?? exactDecimal('0')!,
+          ),
+          discountDecimal ?? exactDecimal('0')!,
+        )
+      : totalDecimal);
+  const receiptTotalDelta = decimalSubtract(lineItemTotal, comparisonTotal);
   const reconciliationWarnings: string[] = [];
 
   if (!items.length) {
@@ -598,15 +623,15 @@ export function validateAndNormalizeReceipt(
   }
 
   if (items.length && !isWithinRoundingTolerance(receiptTotalDelta)) {
+    const basis = subtotalDecimal
+      ? 'receipt subtotal'
+      : hasFinancialAdjustments
+        ? 'adjusted receipt total'
+        : 'receipt total';
     reconciliationWarnings.push(
-      `Line-item sum differs from receipt total by ${formatMoney(receiptTotalDelta, currency as ReceiptCurrency)}.`,
+      `Line-item sum differs from ${basis} by ${formatMoney(receiptTotalDelta, currency as ReceiptCurrency)}.`,
     );
   }
-
-  const subtotalDecimal = optionalAmountDecimals[0];
-  const taxAmountDecimal = optionalAmountDecimals[1];
-  const discountDecimal = optionalAmountDecimals[2];
-  const serviceChargeDecimal = optionalAmountDecimals[3];
   let financialBreakdownMismatch = false;
   if (subtotalDecimal) {
     const expectedTotal = decimalAdd(
