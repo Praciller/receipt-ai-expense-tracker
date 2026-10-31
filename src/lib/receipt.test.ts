@@ -28,6 +28,25 @@ describe('normalizeCategory', () => {
 });
 
 describe('validateAndNormalizeReceipt', () => {
+  it.each([
+    ['merchant name', { shop_name: '' }, 'Shop name is required.'],
+    ['date', { date: '' }, 'Receipt date is missing or invalid.'],
+    ['grand total', { total_amount: undefined }, 'Total amount must be non-negative.'],
+  ])('rejects a missing required %s field', (_field, patch, message) => {
+    const result = validateAndNormalizeReceipt({
+      shop_name: 'Required Fields Shop',
+      date: '2025-01-01',
+      items: [],
+      total_amount: 10,
+      category: 'other',
+      currency: 'THB',
+      confidence: 0.9,
+      ...patch,
+    });
+
+    expect(result).toEqual({ success: false, error: message });
+  });
+
   it('accepts an empty item list when shop and total are present', () => {
     const result = validateAndNormalizeReceipt({
       shop_name: 'ร้านทดสอบ',

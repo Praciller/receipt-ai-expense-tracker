@@ -142,7 +142,7 @@ Receipt fixture compatibility and extraction checks: [`docs/extraction_methodolo
 
 ## Deterministic extraction evidence
 
-The committed synthetic fixture records the expected merchant, date, currency, line items, subtotal evidence, tax availability, total, category, confidence, and validation warnings. Mock responses are validated through the same normalization code used for optional external output.
+The committed synthetic fixture records the expected merchant, date, currency, line items, subtotal evidence, tax availability, total, category, confidence, and validation warnings. The review screen shows provider-returned source spans; when no spans are returned it asks the reviewer to compare the extracted fields with the original image. Mock responses are validated through the same normalization code used for optional external output.
 
 ```powershell
 npm test -- src/lib/ai/router.test.ts src/app/api/receipts/parse/route.test.ts
@@ -206,7 +206,7 @@ The result includes `reconciliation_status` (`reconciled`, `review_required`, or
 
 ## Offline Evaluation
 
-`npm run test:evaluation` evaluates nine synthetic cases and regenerates [`reports/extraction/summary.md`](reports/extraction/summary.md) plus machine-readable metrics. It measures exact fields, numeric tolerance, item counts, completeness, warning accuracy, reconciliation status, parse success, and schema validity. Synthetic results are not real-world OCR accuracy.
+`npm run test:evaluation` evaluates twelve synthetic cases and regenerates [`reports/extraction/summary.md`](reports/extraction/summary.md) plus machine-readable metrics. The Thai cases include full and short Buddhist Era dates, VAT and discount arithmetic, source text evidence, an item-total mismatch, and a missing merchant. Metrics publish their numerator and eligible denominator; fixture IDs must be unique. These synthetic results measure deterministic application behavior, not real-world OCR accuracy.
 
 ## Verification
 
@@ -224,13 +224,14 @@ npm run guardrails
 
 Automated coverage includes:
 
-- Thai Buddhist Era and invalid-date normalization
+- Thai Buddhist Era and invalid-date normalization, including synthetic Thai line-item and VAT cases
 - structured receipt validation
 - exact-decimal item and receipt reconciliation, including insufficient evidence and rounding tolerance
 - provider priority, capability filtering, retry, cache, and fallback behavior
 - mock parse API behavior
 - inference routing, capability filtering, retry, cache, repair, and fallback behavior
-- deterministic parse API behavior
+- deterministic parse API behavior and source-evidence review
+- missing required fields, invalid monetary data, totals, and duplicate evaluation-fixture IDs
 - IndexedDB repository CRUD and live observation
 - local stats aggregation
 - upload, review, and explicit local save
@@ -254,8 +255,11 @@ This portfolio demo is decision-support only. It is not accounting or tax advice
 - No user authentication, cloud sync, export/import, or multi-device support.
 - External image parsing requires an explicitly configured compatible endpoint unless mock mode is enabled.
 - The deterministic fixture demonstrates pipeline behavior, not OCR accuracy on real documents.
+- Source spans are evidence returned by the parser; their presence does not prove that OCR read the document correctly. The mock path has no OCR and returns only its authored fixture.
 - The filesystem parse cache is local to one server instance and is not shared across deployments.
 - Short two-digit Thai years below `60` require manual review because they are ambiguous.
+
+Next steps for a document-intelligence evaluation are to define a consented Thai/English corpus, annotate field-level source locations and ground truth, and measure OCR field precision/recall and monetary error by document type. Invoice-specific fields such as invoice number, supplier/buyer identifiers, and due date need a separate reviewed schema before invoice support is claimed.
 
 ## Portfolio review
 

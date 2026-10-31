@@ -27,9 +27,6 @@ export function useReceipts(refreshTrigger = 0) {
     let active = true;
     let unsubscribe = () => {};
 
-    setIsLoading(true);
-    setError('');
-
     void getReceiptRepository()
       .then((repository) => {
         if (!active) {
@@ -42,6 +39,7 @@ export function useReceipts(refreshTrigger = 0) {
               return;
             }
             setReceipts(nextReceipts);
+            setError('');
             setIsLoading(false);
           },
           (caught) => {
