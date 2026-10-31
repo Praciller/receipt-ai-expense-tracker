@@ -61,6 +61,7 @@ describe('ReceiptUpload', () => {
     fireEvent.change(input, { target: { files: [file] } });
 
     expect(await screen.findByDisplayValue('Portfolio Cafe')).toBeInTheDocument();
+    expect(await screen.findByText(/no source text evidence was returned/i)).toBeInTheDocument();
     expect(screen.getByText('external · receipt-model')).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
 

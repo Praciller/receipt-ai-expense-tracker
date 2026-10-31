@@ -4,6 +4,8 @@
 
 The validated contract includes merchant, normalized and raw date, Buddhist Era conversion metadata, supported currency, line items, subtotal, tax, discount, service charge, grand total, category, confidence, warnings, evidence spans, notes, and parse status.
 
+The review screen displays each returned source span beside its field name. If a response has no evidence spans, the screen asks the reviewer to check the original image before saving. This is a provenance aid, not an OCR confidence guarantee: provider spans still need visual comparison, and mock spans are authored fixture text.
+
 ## Validation and Normalization
 
 - Merchant name is required and trimmed.
@@ -33,5 +35,9 @@ Provider output is mapped to a fixed category list: food, transport, office, sho
 - The only reconciliation tolerance is one minor unit (`฿0.01` for THB), and it does not replace human review. Normalized amounts are bounded at 1,000,000,000,000 currency units.
 - Mock mode proves deterministic pipeline behavior, not OCR accuracy.
 - Human review remains required because model confidence is not a financial guarantee.
+
+## Evaluation and Next Steps
+
+The twelve-case offline suite tests known synthetic inputs and deterministic checks. Its reported denominators count only fields or fixtures eligible for each metric; no eligible cases produce `0/0 (0%)`. This suite does not run OCR and must not be described as real-document accuracy. A next evaluation increment needs a consented Thai/English dataset with independent field labels, source locations, and document-type labels, followed by field precision/recall and monetary-error analysis. Invoice support would need its own reviewed contract for identifiers, parties, dates, and totals.
 
 This methodology is for portfolio decision-support only. It is not accounting or tax advice and has not received a compliance audit.

@@ -52,5 +52,23 @@
     "description": "Synthetic low-confidence extraction.",
     "input": { "shop_name": "Faint Print", "date": "2025-06-13", "items": [], "total_amount": 10, "category": "other", "currency": "THB", "confidence": 0.3 },
     "expected": { "success": true, "date": "2025-06-13", "warning_count": 1, "reconciliation_status": "insufficient_evidence", "item_mismatch_count": 0, "parse_status": "review_required" }
+  },
+  {
+    "id": "thai-vat-discount-source-evidence",
+    "description": "Fictional Thai itemized receipt where VAT and a discount explain the grand total, with printed source evidence.",
+    "input": { "shop_name": "ร้านเอกสารตัวอย่าง", "date": "28/02/2569", "items": [{ "name": "กระดาษ", "quantity": 1, "unit_price": 60, "total_price": 60 }, { "name": "ปากกา", "quantity": 2, "unit_price": 20, "total_price": 40 }], "subtotal": 100, "tax_amount": 7, "discount": 5, "service_charge": 0, "total_amount": 102, "tax_id": "0100000000000", "category": "office", "currency": "THB", "confidence": 0.91, "evidence": [{ "field": "total_amount", "text": "รวมทั้งสิ้น 102.00 บาท" }, { "field": "tax_amount", "text": "ภาษีมูลค่าเพิ่ม 7.00" }] },
+    "expected": { "success": true, "date": "2026-02-28", "warning_count": 1, "reconciliation_status": "review_required", "item_mismatch_count": 0 }
+  },
+  {
+    "id": "thai-short-be-quantity-mismatch",
+    "description": "Fictional Thai receipt with a short Buddhist Era date and a line total that conflicts with quantity times unit price.",
+    "input": { "shop_name": "ร้านเครื่องดื่มจำลอง", "date": "01/07/68", "items": [{ "name": "ชาเย็น", "quantity": 2, "unit_price": 25, "total_price": 48 }], "total_amount": 48, "category": "food", "currency": "THB", "confidence": 0.86, "evidence": [{ "field": "items", "text": "ชาเย็น 2 x 25.00 = 48.00" }, { "field": "total_amount", "text": "รวม 48.00" }] },
+    "expected": { "success": true, "date": "2025-07-01", "warning_count": 1, "reconciliation_status": "review_required", "item_mismatch_count": 1 }
+  },
+  {
+    "id": "thai-missing-shop-name",
+    "description": "Fictional Thai receipt with a readable date and total but no merchant name.",
+    "input": { "date": "05/09/2568", "items": [], "total_amount": 65, "category": "food", "currency": "THB", "confidence": 0.7 },
+    "expected": { "success": false }
   }
 ]

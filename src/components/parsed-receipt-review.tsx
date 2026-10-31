@@ -98,6 +98,26 @@ export function ParsedReceiptReview({
         </div>
       )}
 
+      <section aria-labelledby="source-evidence-title" className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <h3 id="source-evidence-title" className="font-semibold text-slate-900">
+          Source evidence
+        </h3>
+        {receipt.evidence.length > 0 ? (
+          <ul className="mt-2 space-y-2 text-sm text-slate-700">
+            {receipt.evidence.map((evidence, index) => (
+              <li key={`${evidence.field}-${index}`}>
+                <span className="font-medium">{evidence.field.replaceAll('_', ' ')}:</span>{' '}
+                <q>{evidence.text}</q>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p role="status" className="mt-2 text-sm text-amber-900">
+            No source text evidence was returned. Compare the extracted fields with the original image before saving.
+          </p>
+        )}
+      </section>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Shop name">
           <input
