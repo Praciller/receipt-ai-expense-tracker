@@ -22,8 +22,8 @@ The public deployment requires live provider configuration; without it, image up
 
 Receipt extraction crosses several trust boundaries: image upload, AI parsing, financial totals,
 date normalization, human review, and local storage. This project keeps each boundary explicit and
-defaults to a synthetic, zero-cost path so reviewers can validate behavior without uploading real
-financial documents.
+provides a synthetic, zero-cost **local test path only** so reviewers can validate behavior without uploading real
+financial documents. Public production never substitutes fixture output for live inference.
 
 ## 30-Second Reviewer Path
 
@@ -65,7 +65,7 @@ Amount flow is intentionally `AI extraction -> normalization -> deterministic re
 | --- | --- |
 | App | Next.js 16, React 19, TypeScript |
 | Styling | Tailwind CSS 4 |
-| Inference | Configured server-side image provider in production; local mock only when explicitly opted in |
+| Inference | Gemini 3.8 Flash (primary) and Groq Qwen 3.8 27B (optional fallback), each with its own server-side key; opt-in local synthetic tests only |
 | Validation | Zod plus domain normalization |
 | Persistence | IndexedDB through Dexie.js |
 | Analytics | Client-side aggregation and Recharts |
@@ -75,7 +75,7 @@ Amount flow is intentionally `AI extraction -> normalization -> deterministic re
 
 | Area | Evidence |
 | --- | --- |
-| AI workflow | Provider readiness, production fail-closed behavior, local-only mock evaluation |
+| AI workflow | Separate Gemini/Groq keys, provider readiness, bounded failover, production fail-closed behavior, and local-only mock evaluation |
 | Validation | Zod/domain checks for dates, totals, currencies, exact-decimal item math, and review warnings |
 | Evaluation | Nine synthetic extraction cases with schema, reconciliation, and field-level metrics |
 | Storage | Browser-local IndexedDB repository with no default cloud database |

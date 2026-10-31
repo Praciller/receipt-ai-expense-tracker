@@ -18,9 +18,19 @@ AI_MAX_RETRIES=0
 
 Enter the key only in Vercel's encrypted environment variable editor. Never put it in a repository file, commit, issue, chat, browser variable, or log. Redeploy after setting the values, then confirm `/api/health` reports `live_ready: true` and `mock_ai_mode: false`. This project has not verified a live Gemini request unless a valid key was supplied and the deployment was exercised; local tests do not establish provider connectivity.
 
+## Groq Qwen 3.8 Vision (independent API key)
+
+Create a *separate* free-tier key in GroqCloud. Store it only as the production secret `GROQ_API_KEY` in Vercel. The application uses the fixed OpenAI-compatible endpoint `https://api.groq.com/openai/v1/chat/completions`, the vision model `qwen/qwen3.8-27b`, and JSON Object Mode. Neither the key nor the image is sent to Google's API by this Groq provider.
+
+If both providers are configured, Gemini runs first and Groq is a fallback when Gemini returns an error or a result that cannot be validated. Set `AI_PROVIDER_PRIORITY=groq` to try Groq first; any other value retains Gemini-first order. A fallback may consume quota from *both* providers. `AI_MAX_RETRIES=0` avoids automatic retry bursts, but does not eliminate failover. With only one configured key the available provider works alone.
+
+This is a provider integration, **not** a real-world accuracy claim. Compare both models against the same non-sensitive printed test images and reviewed reference values before choosing a long-term primary. Do not use personal invoices or customer data on either free tier.
+
 ## Public endpoint protection
 
-The application does not implement shared quota enforcement or distributed rate limiting. A per-instance process limit would not reliably protect a serverless deployment. Before inviting public traffic, use Vercel or an upstream gateway/WAF to enforce request quotas and rate limits on `/api/receipts/parse`, and monitor provider-side usage. The endpoint validates MIME type and image size, but those checks are not abuse controls. Do not publish hardcoded model pricing or cost estimates; consult the provider's current pricing for the account and region in use.
+A Vercel Firewall rule named **Receipt AI Vision Free Quota** is currently enabled for `/api/receipts/parse`: **5 requests per 600 seconds per source IP**, fixed window, deny when exceeded. This is platform-level rate limiting (not an in-memory serverless counter). It protects against a single noisy IP but is **not a daily or organization-wide quota**: distributed traffic can still exhaust Groq/Gemini's account free allowance. Inspect the rule and provider usage after changes; adjust it only after confirming account limits.
+
+The endpoint also validates image MIME type and size. No paid model, key rotation, daily budget enforcement, or inference costs should be assumed safe solely because a rate limit exists. Use only an unbilled free-tier provider project, and verify the current account rate limits in each provider console.
 
 Receipt images submitted to a live provider leave the browser and are sent to that provider for inference. Upload only non-sensitive images and follow the provider's current data handling terms.
 
