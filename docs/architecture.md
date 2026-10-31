@@ -14,19 +14,19 @@
 ## Parse Sequence
 
 ```text
-JPG/PNG/WebP validation
-  -> deterministic fixture when MOCK_AI_MODE=true
-  -> parse cache lookup when external mode is active
-  -> generic external image-capable endpoint when configured
+production readiness check (live image provider required)
+  -> JPG/PNG/WebP validation
+  -> parse cache lookup when live mode is active
+  -> configured external image-capable endpoint
   -> retry and model fallback
   -> optional JSON repair through the same neutral external interface
   -> Zod/domain validation and deterministic reconciliation evidence
-  -> valid parse or review_required safe fallback
+  -> valid provider parse or HTTP 503
 ```
 
-Mock mode is the default and makes no external inference call. External inference is server-side and explicit: it requires mock mode to be disabled plus the generic endpoint configuration documented in `model_routing.md`.
+An explicitly opted-in local mock mode is available for development and tests only. Production ignores mock mode and never returns a synthetic receipt or safe fallback.
 
-Inference output is never saved automatically. If all parsing paths fail, safe fallback returns an editable `review_required` record; the user must validate and explicitly save it.
+Only a genuine provider result can enter receipt review and be explicitly saved. Inference output is never saved automatically. If live parsing fails in production, the API returns HTTP 503 without receipt data.
 
 ## Persistence Sequence
 

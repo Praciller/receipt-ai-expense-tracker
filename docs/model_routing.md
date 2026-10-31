@@ -2,7 +2,7 @@
 
 ## Default Route
 
-`MOCK_AI_MODE=true` is the default. It returns the deterministic synthetic fixture, bypasses network inference and parse-cache reads, and preserves the real validation, review, and IndexedDB persistence flow.
+Synthetic mock output is available only when `MOCK_AI_MODE=true` is explicitly set outside production. It bypasses network inference and cache reads. Mock output is test-only and cannot be saved to IndexedDB. Production ignores mock mode and requires a configured live image provider.
 
 ## Optional Generic External Route
 
@@ -41,7 +41,7 @@ external mode
   -> validate and normalize structured receipt
   -> on malformed output, optional JSON repair
   -> cache valid result
-  -> return review_required safe fallback when all paths fail
+  -> return HTTP 503 when all live provider paths fail in production
 ```
 
 Network, timeout, malformed output, schema validation, and domain validation failures remain bounded by the router. Retry delay uses `AI_RETRY_BACKOFF_SECONDS`; each request is bounded by `AI_TIMEOUT_SECONDS`.
@@ -66,7 +66,7 @@ When `RETURN_PROVIDER_METADATA=true`, parse responses include neutral metadata:
 }
 ```
 
-If external parsing fails and `ENABLE_SAFE_FALLBACK=true`, the route returns an editable receipt with `parse_status="review_required"` and `degraded_mode=true`. It does not fabricate transaction details.
+In local non-production routing, `ENABLE_SAFE_FALLBACK=true` can return editable review-required placeholders. Production disables that path and returns HTTP 503 without a receipt.
 
 ## Privacy Boundary
 

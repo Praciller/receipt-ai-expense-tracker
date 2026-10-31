@@ -3,6 +3,7 @@ import {
   parseReceiptImage,
   ReceiptParseError,
 } from '@/lib/ai/router';
+import { getConfiguredProviders } from '@/lib/ai/providers';
 
 const ALLOWED_IMAGE_TYPES = new Set([
   'image/jpeg',
@@ -12,6 +13,17 @@ const ALLOWED_IMAGE_TYPES = new Set([
 
 export async function POST(request: NextRequest) {
   try {
+    if (process.env.NODE_ENV === 'production') {
+      const ready = getConfiguredProviders().some(
+        (provider) => provider.supportsImageInput && provider.imageModels.length > 0,
+      );
+      if (!ready) {
+        return NextResponse.json(
+          { error: 'Live receipt extraction is unavailable. The service administrator must configure an image-capable provider before uploads can be processed.' },
+          { status: 503 },
+        );
+      }
+    }
     const image = await readReceiptImage(request);
     if (!ALLOWED_IMAGE_TYPES.has(image.mimeType)) {
       return NextResponse.json(
@@ -40,7 +52,7 @@ export async function POST(request: NextRequest) {
       receipt: result.receipt,
       cached: result.cached,
     };
-    if (process.env.RETURN_PROVIDER_METADATA !== 'false') {
+    if (process.env.NODE_ENV === 'production' || process.env.RETURN_PROVIDER_METADATA !== 'false') {
       Object.assign(responseBody, {
         provider_used: result.provider_used,
         model_used: result.model_used,
@@ -54,10 +66,12 @@ export async function POST(request: NextRequest) {
     if (error instanceof ReceiptParseError) {
       return NextResponse.json(
         {
-          error: error.message,
+          error: process.env.NODE_ENV === 'production'
+            ? 'Live receipt extraction is temporarily unavailable. Please try again later or contact the service administrator.'
+            : error.message,
           parse_status: 'review_required',
         },
-        { status: 422 },
+        { status: process.env.NODE_ENV === 'production' ? 503 : 422 },
       );
     }
 

@@ -4,8 +4,7 @@ import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { CheckCircle, Image as ImageIcon, Loader2, Upload } from 'lucide-react';
-import syntheticFixture from '../../fixtures/synthetic-receipt.json';
-import { validateAndNormalizeReceipt, type ParsedReceipt } from '@/lib/receipt';
+import type { ParsedReceipt } from '@/lib/receipt';
 import { getReceiptRepository } from '@/lib/storage/get-receipt-repository';
 import { ErrorState } from './error-state';
 import { ParsedReceiptReview } from './parsed-receipt-review';
@@ -35,13 +34,27 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
   const [imageMimeType, setImageMimeType] = useState('');
   const [parseResult, setParseResult] = useState<ParseResponse | null>(null);
   const [mockMode, setMockMode] = useState<boolean | null>(null);
-  const [isSample, setIsSample] = useState(false);
+  const [liveReady, setLiveReady] = useState<boolean | null>(null);
+  const [readinessMessage, setReadinessMessage] = useState('Checking live extraction readiness...');
 
   useEffect(() => {
     void fetch('/api/health')
       .then((response) => response.json())
-      .then((health: { mock_ai_mode?: boolean }) => setMockMode(health.mock_ai_mode === true))
-      .catch(() => setMockMode(null));
+      .then(
+        (health: {
+          mock_ai_mode?: boolean;
+          live_ready?: boolean;
+          readiness_message?: string;
+        }) => {
+        setMockMode(health.mock_ai_mode === true);
+        setLiveReady(health.live_ready === true);
+        setReadinessMessage(health.readiness_message ?? 'Live extraction readiness is unknown.');
+      })
+      .catch(() => {
+        setMockMode(false);
+        setLiveReady(false);
+        setReadinessMessage('Could not check live extraction readiness. Refresh before uploading.');
+      });
   }, []);
 
   const processFile = useCallback(async (file: File) => {
@@ -49,7 +62,6 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
     setError('');
     setSuccess('');
     setParseResult(null);
-    setIsSample(false);
 
     try {
       const dataUrl = await fileToBase64(file);
@@ -79,28 +91,6 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
     }
   }, []);
 
-  const trySampleReceipt = () => {
-    const normalized = validateAndNormalizeReceipt(syntheticFixture.expected);
-    if (!normalized.success) {
-      setError(normalized.error);
-      return;
-    }
-
-    setError('');
-    setSuccess('');
-    setPreview('/sample-receipt.svg');
-    setImageBase64('');
-    setImageMimeType('image/svg+xml');
-    setParseResult({
-      receipt: normalized.data,
-      provider_used: 'mock',
-      model_used: 'deterministic-local-v1',
-      cached: false,
-      degraded_mode: false,
-    });
-    setIsSample(true);
-  };
-
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       const file = acceptedFiles[0];
@@ -125,12 +115,18 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
     },
     maxFiles: 1,
     maxSize: 5 * 1024 * 1024,
-    disabled: isParsing || isSaving,
+    disabled: isParsing || isSaving || (liveReady !== true && mockMode !== true),
     noClick: true,
   });
 
   const saveReceipt = async () => {
-    if (!parseResult) {
+    if (
+      !parseResult?.provider_used ||
+      !parseResult.model_used ||
+      parseResult.provider_used === 'mock' ||
+      parseResult.provider_used === 'safe-fallback'
+    ) {
+      setError('Only a result returned by a configured provider can be saved.');
       return;
     }
 
@@ -162,7 +158,6 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
     setImageMimeType('');
     setError('');
     setSuccess('');
-    setIsSample(false);
   };
 
   return (
@@ -175,24 +170,27 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
       </CardHeader>
       <CardContent className="pt-6">
         <div className="mb-4 space-y-2" aria-live="polite">
-          <p className={`rounded-lg border p-3 text-sm ${mockMode === false ? 'border-amber-300 bg-amber-50 text-amber-950' : mockMode === true ? 'border-emerald-200 bg-emerald-50 text-emerald-950' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>
+          <p
+            className={`rounded-lg border p-3 text-sm ${liveReady === true ? 'border-emerald-200 bg-emerald-50 text-emerald-950' : mockMode === true ? 'border-blue-200 bg-blue-50 text-blue-950' : 'border-amber-300 bg-amber-50 text-amber-950'}`}
+          >
             {mockMode === null
-              ? 'Checking extraction mode…'
-              : mockMode === false
-              ? 'Provider mode is enabled. Receipt images may be sent to a configured external AI provider.'
-              : 'Mock mode is the safe default: deterministic synthetic extraction with no external AI call.'}
+              ? 'Checking live provider readiness...'
+              : mockMode
+                ? 'Local mock mode is explicitly enabled for development. Use synthetic test images only.'
+                : liveReady
+                  ? `Live image extraction is ready. ${readinessMessage}`
+                  : readinessMessage}
           </p>
           <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-950">
-            Do not upload sensitive receipts to a public deployment. Use local mock mode for portfolio review.
+            When live extraction is enabled, uploaded images are sent to the configured external AI provider. Do not upload sensitive receipts; use non-sensitive images only.
           </p>
         </div>
         {parseResult ? (
           <ParsedReceiptReview
             receipt={parseResult.receipt}
-            provider={parseResult.provider_used ?? 'ai'}
-            model={parseResult.model_used ?? 'metadata-hidden'}
+            provider={parseResult.provider_used!}
+            model={parseResult.model_used!}
             isSaving={isSaving}
-            sampleMode={isSample}
             degradedMode={parseResult.degraded_mode === true}
             onChange={(receipt) => setParseResult({ ...parseResult, receipt })}
             onSave={() => void saveReceipt()}
@@ -230,7 +228,7 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
                         aria-hidden="true"
                       />
                       <p className="mt-3 text-sm font-medium text-slate-700">
-                        Reading Thai and English receipt details…
+                        Reading Thai and English receipt details...
                       </p>
                     </div>
                   </div>
@@ -248,30 +246,22 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
                   {isDragActive ? 'Drop the receipt here' : 'Add a receipt image'}
                 </p>
                 <p className="mt-1 max-w-md text-sm text-slate-600">
-                  JPG, PNG, or WebP up to 5 MB. AI extracts fields, then you
-                  review before anything is saved.
+                  JPG, PNG, or WebP up to 5 MB.{' '}
+                  {mockMode === true
+                    ? 'Local mock mode returns synthetic test data.'
+                    : liveReady === true
+                      ? 'A live provider processes the image; review the result before saving.'
+                      : 'Image upload is disabled until live extraction is configured.'}
                 </p>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={open}
-                  disabled={isParsing}
+                  disabled={isParsing || isSaving || (liveReady !== true && mockMode !== true)}
                   className="mt-5 bg-white"
                 >
                   Select image
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={trySampleReceipt}
-                  disabled={isParsing || isSaving}
-                  className="mt-3"
-                >
-                  Try sample receipt
-                </Button>
-                <p className="mt-3 text-xs text-slate-500">
-                  Synthetic sample only; nothing is sent to an external provider or saved automatically.
-                </p>
               </div>
             )}
           </div>

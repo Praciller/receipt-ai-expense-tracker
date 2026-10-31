@@ -166,8 +166,9 @@ describe('parseWithProviders', () => {
 });
 
 describe('parseReceiptImage', () => {
-  it('defaults to deterministic mock mode', async () => {
-    vi.stubEnv('MOCK_AI_MODE', '');
+  it('uses deterministic mock only when explicitly opted in locally', async () => {
+    vi.stubEnv('NODE_ENV', 'test');
+    vi.stubEnv('MOCK_AI_MODE', 'true');
     const cache: ParseCache = { get: vi.fn(), set: vi.fn() };
     const external = provider({
       name: 'external',

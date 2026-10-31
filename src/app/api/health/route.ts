@@ -3,12 +3,17 @@ import { getConfiguredProviders } from '@/lib/ai/providers';
 
 export function GET() {
   const providers = getConfiguredProviders();
+  const imageProviders = providers.filter((provider) => provider.supportsImageInput && provider.imageModels.length > 0);
+  const liveReady = imageProviders.length > 0;
   return NextResponse.json({
-    ok: true,
-    mock_ai_mode: process.env.MOCK_AI_MODE !== 'false',
+    ok: process.env.NODE_ENV !== 'production' || liveReady,
+    live_ready: liveReady,
+    readiness_message: liveReady
+      ? 'Live image extraction is configured.'
+      : 'Live extraction is unavailable. Configure a server-side image provider before uploading receipts.',
+    mock_ai_mode: process.env.NODE_ENV !== 'production' && process.env.MOCK_AI_MODE === 'true',
     provider_priority: providers.map((provider) => provider.name),
-    image_providers: providers
-      .filter((provider) => provider.supportsImageInput)
+    image_providers: imageProviders
       .map((provider) => provider.name),
     repair_providers: providers
       .filter((provider) => provider.repairModel)

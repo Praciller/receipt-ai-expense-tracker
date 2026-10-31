@@ -229,7 +229,10 @@ export async function parseWithProviders(
     }
   }
 
-  if (options.safeFallback ?? process.env.ENABLE_SAFE_FALLBACK !== 'false') {
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    (options.safeFallback ?? process.env.ENABLE_SAFE_FALLBACK !== 'false')
+  ) {
     return {
       receipt: createSafeFallbackReceipt(options.now?.() ?? new Date()),
       provider_used: 'safe-fallback',
@@ -251,7 +254,7 @@ export async function parseReceiptImage(
   input: ReceiptImageInput,
   options: ParseReceiptImageOptions = {},
 ): Promise<ParsedReceiptResult> {
-  if (process.env.MOCK_AI_MODE !== 'false') {
+  if (process.env.NODE_ENV !== 'production' && process.env.MOCK_AI_MODE === 'true') {
     return {
       receipt: createMockReceipt(),
       provider_used: 'mock',

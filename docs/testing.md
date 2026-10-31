@@ -36,15 +36,14 @@ MOCK_AI_MODE=true
 NEXT_PUBLIC_STORAGE_MODE=indexeddb
 ```
 
-Mock mode is the default. Then verify with a synthetic, non-sensitive placeholder image:
+Mock mode must be explicitly opted into locally. Then verify with a synthetic, non-sensitive placeholder image:
 
 1. Upload a JPG, PNG, or WebP.
 2. Parsed fields appear without automatic save.
-3. Edit at least one field.
-4. Save.
-5. Confirm receipt history.
-6. Confirm dashboard totals.
-7. Delete the receipt through inline confirmation.
+3. Confirm the review screen identifies mock output.
+4. Confirm mock output cannot be saved to receipt history.
+
+To exercise IndexedDB save/history/dashboard behavior, use a controlled non-sensitive receipt and a configured provider. Production only permits genuine provider results to be reviewed and saved.
 
 Never commit the placeholder, a real receipt, or generated extraction output.
 
@@ -54,7 +53,7 @@ Use only a controlled non-sensitive test receipt. Set `MOCK_AI_MODE=false` and c
 
 Verify both capability paths:
 
-1. `EXTERNAL_AI_SUPPORTS_IMAGE_INPUT=false` prevents direct image inference and returns the bounded safe-fallback behavior when no eligible image route exists.
+1. `EXTERNAL_AI_SUPPORTS_IMAGE_INPUT=false` prevents direct image inference. Production reports not-ready and returns HTTP 503 when no eligible image route exists.
 2. `EXTERNAL_AI_SUPPORTS_IMAGE_INPUT=true` allows the configured external model to receive the image; valid structured output must pass shared receipt validation before review.
 3. Force the primary external request to fail and verify retry/model fallback metadata.
 4. Return malformed structured output and verify optional JSON repair through the same generic external interface.
