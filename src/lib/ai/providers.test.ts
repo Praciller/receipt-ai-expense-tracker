@@ -96,3 +96,56 @@ function configureExternalEnvironment() {
   vi.stubEnv('EXTERNAL_AI_JSON_REPAIR_MODEL', 'external-repair');
   vi.stubEnv('EXTERNAL_AI_SUPPORTS_IMAGE_INPUT', 'true');
 }
+
+describe('Groq free vision provider', () => {
+  it('keeps Groq unconfigured until a dedicated API key exists', () => {
+    vi.stubEnv('GROQ_API_KEY', '');
+    expect(getConfiguredProviders()).toEqual([]);
+  });
+
+  it('uses the documented Qwen vision model without a shared Gemini key', () => {
+    vi.stubEnv('GROQ_API_KEY', 'test-groq-secret');
+    const providers = getConfiguredProviders();
+    expect(providers).toHaveLength(1);
+    expect(providers[0].name).toBe('groq');
+    expect(providers[0].imageModels).toEqual(['qwen/qwen3.8-27b']);
+    expect(providers[0].supportsImageInput).toBe(true);
+    expect(providers[0].repairModel).toBeUndefined();
+  });
+
+  it('uses the Groq API host, its own key, vision data and JSON mode', async () => {
+    vi.stubEnv('GROQ_API_KEY', 'test-groq-secret');
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({ choices: [{ message: { content: '{"shop_name":"Demo"}' } }] }),
+        { status: 200 },
+      ),
+    );
+    const provider = getConfiguredProviders()[0];
+    await provider.parseImage(
+      { base64Image: 'test-png', mimeType: 'image/png' },
+      'qwen/qwen3.8-27b',
+      new AbortController().signal,
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.groq.com/openai/v1/chat/completions',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer test-groq-secret' }),
+      }),
+    );
+    const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    expect(body.model).toBe('qwen/qwen3.8-27b');
+    expect(body.response_format).toEqual({ type: 'json_object' });
+    expect(body.messages[0].content[1].image_url.url).toBe('data:image/png;base64,test-png');
+  });
+
+  it('prefers Gemini and supports an explicit Groq-primary order without changing keys', () => {
+    configureExternalEnvironment();
+    vi.stubEnv('GROQ_API_KEY', 'test-groq-secret');
+    expect(getConfiguredProviders().map((p) => p.name)).toEqual(['external', 'groq']);
+    vi.stubEnv('AI_PROVIDER_PRIORITY', 'groq');
+    expect(getConfiguredProviders().map((p) => p.name)).toEqual(['groq', 'external']);
+  });
+});

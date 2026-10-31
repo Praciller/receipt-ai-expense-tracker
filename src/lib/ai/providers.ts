@@ -2,6 +2,8 @@ import { RECEIPT_PROMPT } from './prompt';
 import type { ReceiptAiProvider, ReceiptImageInput } from './router';
 
 interface ExternalOptions {
+  name?: string;
+  jsonMode?: boolean;
   apiKey: string;
   baseUrl: string;
   chatPath: string;
@@ -11,35 +13,56 @@ interface ExternalOptions {
 }
 
 export function getConfiguredProviders(): ReceiptAiProvider[] {
+  const providers: ReceiptAiProvider[] = [];
   const apiKey = process.env.EXTERNAL_AI_API_KEY?.trim();
   const baseUrl = process.env.EXTERNAL_AI_BASE_URL?.trim();
   const model = process.env.EXTERNAL_AI_MODEL?.trim();
-  if (!apiKey || !baseUrl || !model) {
-    return [];
+  if (apiKey && baseUrl && model) {
+    providers.push(
+      createExternalProvider({
+        name: baseUrl.includes('generativelanguage.googleapis.com') ? 'gemini' : 'external',
+        apiKey,
+        baseUrl,
+        chatPath:
+          process.env.EXTERNAL_AI_CHAT_PATH?.trim() || '/v1/chat/completions',
+        supportsImageInput: booleanEnvironment(
+          process.env.EXTERNAL_AI_SUPPORTS_IMAGE_INPUT,
+          true,
+        ),
+        imageModels: uniqueModels([
+          model,
+          process.env.EXTERNAL_AI_FALLBACK_MODEL ?? '',
+        ]),
+        repairModel: process.env.EXTERNAL_AI_JSON_REPAIR_MODEL?.trim() || model,
+      }),
+    );
   }
 
-  return [
-    createExternalProvider({
-      apiKey,
-      baseUrl,
-      chatPath:
-        process.env.EXTERNAL_AI_CHAT_PATH?.trim() || '/v1/chat/completions',
-      supportsImageInput: booleanEnvironment(
-        process.env.EXTERNAL_AI_SUPPORTS_IMAGE_INPUT,
-        true,
-      ),
-      imageModels: uniqueModels([
-        model,
-        process.env.EXTERNAL_AI_FALLBACK_MODEL ?? '',
-      ]),
-      repairModel: process.env.EXTERNAL_AI_JSON_REPAIR_MODEL?.trim() || model,
-    }),
-  ];
+  // Groq is intentionally pinned to a documented vision model and host.
+  // Never mix provider keys or send images to an arbitrary client URL.
+  const groqKey = process.env.GROQ_API_KEY?.trim();
+  if (groqKey) {
+    providers.push(
+      createExternalProvider({
+        name: 'groq',
+        apiKey: groqKey,
+        baseUrl: 'https://api.groq.com/openai/v1',
+        chatPath: '/chat/completions',
+        supportsImageInput: true,
+        imageModels: ['qwen/qwen3.8-27b'],
+        jsonMode: true,
+      }),
+    );
+  }
+
+  return process.env.AI_PROVIDER_PRIORITY === 'groq'
+    ? providers.reverse()
+    : providers;
 }
 
 function createExternalProvider(options: ExternalOptions): ReceiptAiProvider {
   return {
-    name: 'external',
+    name: options.name ?? 'external',
     supportsImageInput: options.supportsImageInput,
     imageModels: options.imageModels,
     repairModel: options.repairModel,
@@ -103,6 +126,7 @@ async function requestExternal(
         temperature: 0,
         max_tokens: 1600,
         messages,
+        ...(options.jsonMode ? { response_format: { type: 'json_object' } } : {}),
       }),
       signal,
     },
