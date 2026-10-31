@@ -23,10 +23,10 @@ Verification date: June 21, 2026.
 
 ## Deterministic Review
 
-- Mock mode is the no-key default.
+- Synthetic mock mode requires an explicit local opt-in; production ignores it.
 - [`../fixtures/synthetic-receipt.json`](../fixtures/synthetic-receipt.json) is the sole receipt data fixture.
 - Mock tests verify that providers and the filesystem cache are bypassed.
-- External providers run only when `MOCK_AI_MODE=false` is explicitly selected.
+- Only provider-backed results can be saved; production fails closed without a configured image provider.
 
 ## Amount Reconciliation Verification (August 29, 2026)
 

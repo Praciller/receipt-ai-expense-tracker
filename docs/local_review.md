@@ -1,6 +1,6 @@
 # Local Review
 
-The review path is zero-cost, synthetic, local-first, and does not require provider keys.
+The local review path is synthetic, local-first, and does not require provider keys. Synthetic results are for review/testing only and cannot be saved; saving requires a result from a configured live provider.
 
 ## Windows PowerShell
 
@@ -20,7 +20,7 @@ $bytes = [Convert]::FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HA
 [IO.File]::WriteAllBytes("$PWD\uploads\synthetic-placeholder.png", $bytes)
 ```
 
-Open `http://localhost:3000`, upload `uploads/synthetic-placeholder.png`, review the synthetic fields, and save. Expected values are recorded in [`../fixtures/synthetic-receipt.json`](../fixtures/synthetic-receipt.json). Saving writes only to the current browser's IndexedDB.
+Open `http://localhost:3000`, upload `uploads/synthetic-placeholder.png`, and review the synthetic fields. Expected values are recorded in [`../fixtures/synthetic-receipt.json`](../fixtures/synthetic-receipt.json). The mock result cannot be saved to IndexedDB.
 
 ## Expected Evidence
 
