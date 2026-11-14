@@ -65,7 +65,7 @@ Amount flow is intentionally `AI extraction -> normalization -> deterministic re
 | --- | --- |
 | App | Next.js 16, React 19, TypeScript |
 | Styling | Tailwind CSS 4 |
-| Inference | Gemini 3.8 Flash (primary) and Groq Qwen 3.8 27B (optional fallback), each with its own server-side key; opt-in local synthetic tests only |
+| Inference | Configurable Gemini and Groq vision providers with separate server-side keys; the public deployment currently prioritizes Groq, with Gemini as fallback |
 | Validation | Zod plus domain normalization |
 | Persistence | IndexedDB through Dexie.js |
 | Analytics | Client-side aggregation and Recharts |
@@ -123,6 +123,8 @@ EXTERNAL_AI_FALLBACK_MODEL=
 EXTERNAL_AI_JSON_REPAIR_MODEL=
 EXTERNAL_AI_SUPPORTS_IMAGE_INPUT=true
 ```
+
+The code defaults to the configured external provider first. Set `AI_PROVIDER_PRIORITY=groq` to prioritize Groq. The public deployment's `/api/health` reported Groq then Gemini on 2026-11-14; configuration and provider availability can change. Readiness reports configuration, not a successful inference test.
 
 Never expose an inference credential through a public frontend variable. For exact Vercel configuration and public endpoint limits, see [`docs/production-live-inference.md`](docs/production-live-inference.md). See [`docs/model_routing.md`](docs/model_routing.md) for routing and validation behavior.
 
