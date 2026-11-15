@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-    const image = await readReceiptImage(request);
+    const { image, forceLive } = await readReceiptImage(request);
     if (!ALLOWED_IMAGE_TYPES.has(image.mimeType)) {
       return NextResponse.json(
         { error: 'Use a JPG, PNG, or WebP receipt image.' },
@@ -44,10 +44,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await parseReceiptImage({
-      base64Image: image.base64Image,
-      mimeType: image.mimeType,
-    });
+    const result = await parseReceiptImage(
+      {
+        base64Image: image.base64Image,
+        mimeType: image.mimeType,
+      },
+      { forceLive },
+    );
 
     if (process.env.NODE_ENV === 'production' && result.fallback_used) {
       // Runtime-only diagnostics: never log image bytes, receipt fields, or
@@ -102,6 +105,7 @@ async function readReceiptImage(request: NextRequest) {
 
   if (contentType.includes('multipart/form-data')) {
     const formData = await request.formData();
+    const forceLive = formData.get('force_live') === 'true';
     const file = formData.get('file');
     if (
       !file ||
@@ -113,15 +117,19 @@ async function readReceiptImage(request: NextRequest) {
 
     const bytes = Buffer.from(await file.arrayBuffer());
     return {
-      base64Image: bytes.toString('base64'),
-      mimeType: file.type,
-      byteLength: bytes.byteLength,
+      image: {
+        base64Image: bytes.toString('base64'),
+        mimeType: file.type,
+        byteLength: bytes.byteLength,
+      },
+      forceLive,
     };
   }
 
   const body = (await request.json()) as {
     image?: string;
     mimeType?: string;
+    force_live?: boolean;
   };
   if (!body.image || !body.mimeType) {
     throw new TypeError('Image and mimeType are required.');
@@ -129,8 +137,11 @@ async function readReceiptImage(request: NextRequest) {
 
   const bytes = Buffer.from(body.image, 'base64');
   return {
-    base64Image: body.image,
-    mimeType: body.mimeType,
-    byteLength: bytes.byteLength,
+    image: {
+      base64Image: body.image,
+      mimeType: body.mimeType,
+      byteLength: bytes.byteLength,
+    },
+    forceLive: body.force_live === true,
   };
 }

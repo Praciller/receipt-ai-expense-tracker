@@ -2,15 +2,16 @@
 
 ## Reviewer Flow
 
-1. Run the commands in [`local_review.md`](local_review.md).
-2. Generate the ignored synthetic placeholder image.
-3. Upload it and compare the result with [`../fixtures/synthetic-receipt.json`](../fixtures/synthetic-receipt.json).
-4. Edit one field, save, reload, inspect history/dashboard totals, then delete the record.
-5. Run `python scripts/check_repo_guardrails.py`.
+1. Open the [public demo](https://receipt-ai-expense-tracker-eta.vercel.app/).
+2. Choose **Try fictional sample receipt**. It uses uncached live inference through the parse API, not the deterministic mock fixture.
+3. Compare the returned provider/model and fields with the fictional image, then edit a field and save.
+4. Inspect the saved record in Receipts and its totals in Dashboard. The record stays in the current browser on this device.
+5. For a zero-cost local review, follow [`local_review.md`](local_review.md) and run `python scripts/check_repo_guardrails.py`.
 
 ## What This Demonstrates
 
-- deterministic no-key receipt extraction evidence
+- deterministic no-key receipt extraction evidence in local mock/evaluation mode
+- live extraction from the public synthetic sample when the configured provider is available
 - optional capability-aware external provider routing
 - shared validation and normalization
 - explicit human review before local persistence

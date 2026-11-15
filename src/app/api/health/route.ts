@@ -9,7 +9,7 @@ export function GET() {
     ok: process.env.NODE_ENV !== 'production' || liveReady,
     live_ready: liveReady,
     readiness_message: liveReady
-      ? 'Live image extraction is configured.'
+      ? 'Live image provider configuration is present. This check does not test inference success.'
       : 'Live extraction is unavailable. Configure a server-side image provider before uploading receipts.',
     mock_ai_mode: process.env.NODE_ENV !== 'production' && process.env.MOCK_AI_MODE === 'true',
     provider_priority: providers.map((provider) => provider.name),

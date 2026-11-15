@@ -1,10 +1,14 @@
 # Production live inference setup
 
-Production receipt parsing requires a configured image-capable provider. If none is available, `/api/health` reports `live_ready: false`, the upload control stays disabled, and `/api/receipts/parse` returns HTTP 503 without a receipt object. Production never runs the synthetic fixture or the safe fallback. A real provider response is shown with its provider and model, then requires human review and explicit save before anything is written to browser IndexedDB.
+Production receipt parsing requires a configured image-capable provider. If none is configured, `/api/health` reports `live_ready: false`, the upload control stays disabled, and `/api/receipts/parse` returns HTTP 503 without a receipt object. Production never runs the synthetic fixture or the safe fallback. A successful provider response is shown with its provider and model, then requires human review and explicit save before anything is written to browser IndexedDB.
+
+The public upload screen includes a fictional sample image. It is rasterized to PNG and sent through the same parse API as a user upload, with mock output and the parse cache bypassed. The image still leaves the browser and reaches the configured external AI provider. If inference fails, the UI shows the error; it does not substitute fixture output.
+
+`/api/health` computes readiness from configured image-capable routes. It does not make a provider request, validate credentials with the provider, check quota, or prove image inference succeeds. The successful parse response and its provider/model metadata are evidence for that individual request.
 
 ## Google Gemini through the OpenAI-compatible endpoint
 
-In the Vercel project settings, add these as encrypted server-side environment variables for the intended deployment environment:
+In the Vercel project settings, add these as encrypted server-side environment variables for the intended deployment environment. This configures the Gemini route; it does not make Gemini a permanent deployment primary:
 
 ```text
 MOCK_AI_MODE=false
@@ -16,13 +20,15 @@ ENABLE_SAFE_FALLBACK=false
 AI_MAX_RETRIES=0
 ```
 
-Enter the key only in Vercel's encrypted environment variable editor. Never put it in a repository file, commit, issue, chat, browser variable, or log. Redeploy after setting the values, then confirm `/api/health` reports `live_ready: true` and `mock_ai_mode: false`. Gemini 3.8 Flash uses `reasoning_effort=low` and a larger 4096-token maximum to avoid JSON truncation from default thinking. A readiness check only confirms credentials are present; it does not prove that the provider can successfully parse an image.
+Enter the key only in Vercel's encrypted environment variable editor. Never put it in a repository file, commit, issue, chat, browser variable, or log. Redeploy after setting the values, then confirm `/api/health` reports `live_ready: true` and `mock_ai_mode: false`. Gemini 3.8 Flash uses `reasoning_effort=low` and a larger 4096-token maximum to avoid JSON truncation from default thinking. A readiness check confirms only that an image-capable route is configured; it does not prove that the provider can successfully parse an image.
 
 ## Groq Qwen 3.8 Vision (independent API key)
 
 Create a *separate* free-tier key in GroqCloud. Store it only as the production secret `GROQ_API_KEY` in Vercel. The application uses the fixed OpenAI-compatible endpoint `https://api.groq.com/openai/v1/chat/completions`, the vision model `qwen/qwen3.8-27b`, and JSON Object Mode. Neither the key nor the image is sent to Google's API by this Groq provider.
 
-If both providers are configured, Gemini runs first and Groq is a fallback when Gemini returns an error or a result that cannot be validated. Set `AI_PROVIDER_PRIORITY=groq` to try Groq first; any other value retains Gemini-first order. A fallback may consume quota from *both* providers. `AI_MAX_RETRIES=0` avoids automatic retry bursts, but does not eliminate failover. With only one configured key the available provider works alone.
+The code builds its route list in this order: configured `EXTERNAL_AI_*` provider, then configured Groq. A Google Generative Language base URL names the external route `gemini`; another compatible URL names it `external`. Thus, when Gemini and Groq are both configured, the code default is Gemini then Groq. Set `AI_PROVIDER_PRIORITY=groq` to reverse the configured list; any other value retains configuration order. The deployment can change environment values at any time, so this is not a permanent production priority.
+
+On 2026-11-15, the public `/api/health` reported `provider_priority: ["groq", "gemini"]`, `image_providers: ["groq", "gemini"]`, and `repair_providers: ["gemini"]`. This dated snapshot describes configured routes only. It does not show which provider completed a particular inference. Check the provider/model returned by a successful parse to identify that request's result. A fallback may consume quota from *both* providers. `AI_MAX_RETRIES=0` avoids automatic retry bursts, but does not eliminate failover. With only one configured key the available provider works alone.
 
 This is a provider integration, **not** a real-world accuracy claim. Compare both models against the same non-sensitive printed test images and reviewed reference values before choosing a long-term primary. Do not use personal invoices or customer data on either free tier.
 
