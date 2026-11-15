@@ -6,6 +6,14 @@ The public upload screen includes a fictional sample image. It is rasterized to 
 
 `/api/health` computes readiness from configured image-capable routes. It does not make a provider request, validate credentials with the provider, check quota, or prove image inference succeeds. The successful parse response and its provider/model metadata are evidence for that individual request.
 
+## Preview-only live verification
+
+For the `docs/clarify-production-provider-priority` preview, use a dedicated provider key scoped to that Preview branch. In the Vercel project, open **Settings → Environment Variables** and add `GROQ_API_KEY` as a **Sensitive** variable with the **Preview** target and Git branch `docs/clarify-production-provider-priority`. Do not edit the existing Production variable or select Production or Development. Vercel applies environment changes to new deployments, so redeploy this Preview deployment after saving; do not redeploy Production. See [Vercel environment-variable scopes](https://vercel.com/docs/environment-variables) and [how to manage them](https://vercel.com/docs/environment-variables/managing-environment-variables).
+
+Create a separate Groq key only if the account remains on a no-charge plan. Groq currently lists the pinned `qwen/qwen3.8-27b` model as image-capable, but also publishes paid-tier token pricing; do not upgrade or enable billing for this test. If the model is unavailable on the no-charge plan, stop and request approval before using a paid route. The app's Groq adapter fixes the provider host and model, so `GROQ_API_KEY` is the only provider credential required when Groq is the sole configured route. Optionally set `AI_MAX_RETRIES=0` and `ENABLE_SAFE_FALLBACK=false` as Preview-only values to limit repeat calls and keep failures explicit.
+
+After the Preview redeploy is Ready, `/api/health` should report `live_ready: true` and `image_providers: ["groq"]`. This only confirms configuration. Click **Try fictional sample receipt** once to force an uncached live request, then confirm the successful response's provider and model, compare fields with the visible sample, review/edit, save, and verify browser-local history and dashboard totals. The fictional image is sent to Groq; never use personal or customer receipts for this test. If readiness is false or inference fails, do not treat a fixture, cached result, or safe fallback as live success.
+
 ## Google Gemini through the OpenAI-compatible endpoint
 
 In the Vercel project settings, add these as encrypted server-side environment variables for the intended deployment environment. This configures the Gemini route; it does not make Gemini a permanent deployment primary:
