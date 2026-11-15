@@ -20,6 +20,7 @@ describe('GET /api/health', () => {
   it('reports production as not ready without a live image provider', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('MOCK_AI_MODE', 'true');
+    vi.stubEnv('ENABLE_SAFE_FALLBACK', 'true');
     vi.stubEnv('EXTERNAL_AI_API_KEY', '');
     vi.stubEnv('EXTERNAL_AI_BASE_URL', '');
     vi.stubEnv('EXTERNAL_AI_MODEL', '');
@@ -30,6 +31,7 @@ describe('GET /api/health', () => {
     expect(body.ok).toBe(false);
     expect(body.mock_ai_mode).toBe(false);
     expect(body.live_ready).toBe(false);
+    expect(body.safe_fallback_enabled).toBe(false);
   });
 
   it('reports configured routes without claiming inference success or exposing credentials', async () => {

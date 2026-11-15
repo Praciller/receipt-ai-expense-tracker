@@ -19,7 +19,9 @@ export function GET() {
       .filter((provider) => provider.repairModel)
       .map((provider) => provider.name),
     cache_enabled: process.env.ENABLE_AI_PARSE_CACHE !== 'false',
-    safe_fallback_enabled: process.env.ENABLE_SAFE_FALLBACK !== 'false',
+    safe_fallback_enabled:
+      process.env.NODE_ENV !== 'production' &&
+      process.env.ENABLE_SAFE_FALLBACK !== 'false',
     storage: process.env.NEXT_PUBLIC_STORAGE_MODE ?? 'indexeddb',
   });
 }
