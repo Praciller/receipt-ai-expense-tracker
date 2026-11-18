@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { loadSampleReceiptImage } from './sample-receipt';
 
@@ -8,11 +9,13 @@ afterEach(() => {
 
 describe('loadSampleReceiptImage', () => {
   it('rasterizes the fictional SVG as a PNG accepted by the parse API', async () => {
+    const svg = readFileSync('public/sample-receipt.svg', 'utf8');
+    const { documentElement } = new DOMParser().parseFromString(svg, 'image/svg+xml');
     const drawImage = vi.fn();
     const revokeObjectURL = vi.fn();
     vi.stubGlobal('Image', class {
-      naturalWidth = 640;
-      naturalHeight = 800;
+      naturalWidth = Number(documentElement.getAttribute('width'));
+      naturalHeight = Number(documentElement.getAttribute('height'));
       onload: (() => void) | null = null;
       onerror: (() => void) | null = null;
       set src(_value: string) {
@@ -24,7 +27,7 @@ describe('loadSampleReceiptImage', () => {
       revokeObjectURL,
     }));
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response('<svg></svg>', {
+      new Response(svg, {
         status: 200,
         headers: { 'Content-Type': 'image/svg+xml' },
       }),
@@ -32,7 +35,9 @@ describe('loadSampleReceiptImage', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
       drawImage,
     } as unknown as CanvasRenderingContext2D);
-    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback) => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function (this: HTMLCanvasElement, callback) {
+      expect(this.width).toBe(1280);
+      expect(this.height).toBe(1600);
       callback(new Blob(['png-image-bytes'], { type: 'image/png' }));
     });
 
