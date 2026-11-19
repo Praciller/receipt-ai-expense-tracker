@@ -56,6 +56,9 @@ export function ParsedReceiptReview({
           <p className="mt-1 text-sm text-slate-600">
             AI can misread receipts. Confirm every field before saving.
           </p>
+          <p className="mt-2 max-w-2xl text-sm text-slate-600">
+            Saving stores this receipt and image in local browser storage on this device. Live extraction already sent the image to the external provider shown below.
+          </p>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
           <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-800">

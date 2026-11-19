@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ReceiptUpload } from './receipt-upload';
 
 const repositoryCreate = vi.hoisted(() => vi.fn());
+const loadSampleReceiptImage = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/storage/get-receipt-repository', () => ({
   getReceiptRepository: vi.fn(async () => ({
@@ -10,10 +11,13 @@ vi.mock('@/lib/storage/get-receipt-repository', () => ({
   })),
 }));
 
+vi.mock('@/lib/sample-receipt', () => ({ loadSampleReceiptImage }));
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   repositoryCreate.mockReset();
+  loadSampleReceiptImage.mockReset();
 });
 
 describe('ReceiptUpload', () => {
@@ -77,6 +81,78 @@ describe('ReceiptUpload', () => {
     expect(
       await screen.findByText(/saved locally to expense history/i),
     ).toBeInTheDocument();
+  });
+
+  it('sends the fictional sample through uncached live parsing and saves only the reviewed edit', async () => {
+    const sample = new File(['png bytes'], 'synthetic-sample-receipt.png', { type: 'image/png' });
+    loadSampleReceiptImage.mockResolvedValue(sample);
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        mock_ai_mode: false,
+        live_ready: true,
+        readiness_message: 'Live image provider configuration is present. This check does not test inference success.',
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        receipt: {
+          shop_name: 'Portfolio Cafe', date: '2025-06-13', raw_date_text: '13/06/2568',
+          date_normalization: { calendar: 'buddhist', original_year: 2568, converted: true },
+          items: [{ name: 'Iced coffee', quantity: 1, unit_price: 85, total_price: 85 }],
+          subtotal: 130, tax_amount: null, discount: null, service_charge: null,
+          total_amount: 130, tax_id: null, category: 'food', currency: 'THB',
+          confidence: 0.91, notes: '', warnings: [],
+          evidence: [{ field: 'total_amount', text: 'TOTAL THB 130.00' }],
+          parse_status: 'parsed',
+        },
+        provider_used: 'groq',
+        model_used: 'qwen/qwen3.8-27b',
+        fallback_used: false,
+        cached: false,
+        degraded_mode: false,
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    repositoryCreate.mockResolvedValue({ id: 'saved-sample' });
+
+    render(<ReceiptUpload />);
+    await screen.findByText(/this check does not test inference success/i);
+    fireEvent.click(screen.getByRole('button', { name: /try fictional sample receipt/i }));
+
+    expect(await screen.findByDisplayValue('Portfolio Cafe')).toBeInTheDocument();
+    expect(screen.getByText('groq · qwen/qwen3.8-27b')).toBeInTheDocument();
+    expect(screen.getByText(/local browser storage on this device/i)).toBeInTheDocument();
+    expect(loadSampleReceiptImage).toHaveBeenCalledOnce();
+
+    const formData = fetchMock.mock.calls[1]?.[1]?.body as FormData;
+    expect(formData.get('file')).toMatchObject({ name: sample.name, type: 'image/png' });
+    expect(formData.get('force_live')).toBe('true');
+    expect(repositoryCreate).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Shop name'), { target: { value: 'Reviewed Portfolio Cafe' } });
+    fireEvent.click(screen.getByRole('button', { name: /save receipt/i }));
+
+    await waitFor(() => expect(repositoryCreate).toHaveBeenCalledOnce());
+    expect(repositoryCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ shop_name: 'Reviewed Portfolio Cafe' }),
+      expect.objectContaining({ mimeType: 'image/png' }),
+    );
+  });
+
+  it('shows provider errors for the fictional sample and never opens review or saves', async () => {
+    loadSampleReceiptImage.mockResolvedValue(
+      new File(['png bytes'], 'synthetic-sample-receipt.png', { type: 'image/png' }),
+    );
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify({ mock_ai_mode: false, live_ready: true }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        error: 'Live receipt extraction is temporarily unavailable. Please try again later.',
+      }), { status: 503, headers: { 'Content-Type': 'application/json' } }));
+
+    render(<ReceiptUpload />);
+    await screen.findByRole('button', { name: /try fictional sample receipt/i });
+    fireEvent.click(screen.getByRole('button', { name: /try fictional sample receipt/i }));
+
+    expect(await screen.findByText(/live receipt extraction is temporarily unavailable/i)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /review extracted receipt/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /choose another image/i })).toBeInTheDocument();
+    expect(repositoryCreate).not.toHaveBeenCalled();
   });
 
   it('shows reconciliation warnings before a human can save the parsed receipt', async () => {
@@ -147,8 +223,8 @@ describe('ReceiptUpload', () => {
 
     expect(await screen.findByText(/configure an image-capable provider before uploading/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /select image/i })).toBeDisabled();
-    expect(screen.queryByRole('button', { name: /try sample receipt/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/sent to the configured external ai provider/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /try fictional sample receipt/i })).toBeDisabled();
+    expect(screen.getByText(/including the fictional sample.*configured external ai provider/i)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(repositoryCreate).not.toHaveBeenCalled();
   });
