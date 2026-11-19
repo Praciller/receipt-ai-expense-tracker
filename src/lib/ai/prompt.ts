@@ -13,10 +13,10 @@ Return exactly one JSON object with this schema:
       "total_price": 0
     }
   ],
-  "subtotal": 0,
-  "tax_amount": 0,
-  "discount": 0,
-  "service_charge": 0,
+  "subtotal": null,
+  "tax_amount": null,
+  "discount": null,
+  "service_charge": null,
   "total_amount": 0,
   "tax_id": "string or null",
   "category": "food | transport | office | shopping | utilities | health | other",
@@ -35,7 +35,8 @@ Rules:
 - Use an empty items array only when shop_name and total_amount are readable.
 - Use confidence from 0 to 1.
 - Put uncertainty or unreadable details in notes and warnings.
-- Use null for unavailable subtotal, tax_amount, discount, and service_charge.
+- Populate subtotal, tax_amount, discount, and service_charge only when a separate printed label and amount identify that field. Use null when that line is absent or unreadable.
+- A line labeled TOTAL or GRAND TOTAL belongs to total_amount only. Do not copy it to subtotal or calculate a subtotal by adding line items. If the image only prints a final total, subtotal is null.
 - Preserve extracted financial values as printed; do not adjust an amount to make arithmetic agree.
 - Evidence must be short text spans visible on the receipt; never invent it.`;
 
