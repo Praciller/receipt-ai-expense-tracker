@@ -4,13 +4,14 @@ import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { CheckCircle, Image as ImageIcon, Loader2, Upload } from 'lucide-react';
-import type { ParsedReceipt } from '@/lib/receipt';
+import { validateAndNormalizeReceipt, type ParsedReceipt } from '@/lib/receipt';
 import { loadSampleReceiptImage } from '@/lib/sample-receipt';
 import { getReceiptRepository } from '@/lib/storage/get-receipt-repository';
 import { ErrorState } from './error-state';
 import { ParsedReceiptReview } from './parsed-receipt-review';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import syntheticReceipt from '../../fixtures/synthetic-receipt.json';
 
 interface ReceiptUploadProps {
   onUploadSuccess?: () => void;
@@ -23,6 +24,7 @@ interface ParseResponse {
   fallback_used?: boolean;
   cached: boolean;
   degraded_mode?: boolean;
+  source?: 'provider' | 'synthetic-demo';
 }
 
 export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
@@ -88,7 +90,7 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
         throw new Error(data.error ?? 'AI could not parse this receipt.');
       }
 
-      setParseResult(data);
+      setParseResult({ ...data, source: 'provider' });
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : 'Failed to parse receipt.',
@@ -111,6 +113,29 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
       setIsPreparingSample(false);
     }
   }, [processFile]);
+
+  const previewSyntheticReceipt = useCallback(() => {
+    setError('');
+    setSuccess('');
+    const result = validateAndNormalizeReceipt(syntheticReceipt.expected);
+    if (!result.success) {
+      setError('The synthetic demo fixture is invalid. Refresh the page and try again.');
+      return;
+    }
+
+    setPreview(null);
+    setIsSampleReceipt(false);
+    setImageBase64('');
+    setImageMimeType('');
+    setParseResult({
+      receipt: result.data,
+      provider_used: 'Synthetic fixture',
+      model_used: 'Fixed example · no model call',
+      cached: false,
+      degraded_mode: false,
+      source: 'synthetic-demo',
+    });
+  }, []);
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
@@ -141,6 +166,10 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
   });
 
   const saveReceipt = async () => {
+    if (parseResult?.source === 'synthetic-demo') {
+      setError('Synthetic demo examples cannot be saved to expense history.');
+      return;
+    }
     if (
       !parseResult?.provider_used ||
       !parseResult.model_used ||
@@ -203,15 +232,18 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
                 ? 'Local mock mode is explicitly enabled for development. Use synthetic test images only.'
                 : readinessMessage}
           </p>
-          <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-950">
-            Live extraction sends the selected image, including the fictional sample, to the configured external AI provider. Do not upload sensitive receipts; use non-sensitive images only.
-          </p>
+          {parseResult?.source !== 'synthetic-demo' && (
+            <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-950">
+              Live extraction sends the selected image, including the fictional sample, to the configured external AI provider. Do not upload sensitive receipts; use non-sensitive images only.
+            </p>
+          )}
         </div>
         {parseResult ? (
           <ParsedReceiptReview
             receipt={parseResult.receipt}
             provider={parseResult.provider_used!}
             model={parseResult.model_used!}
+            syntheticDemo={parseResult.source === 'synthetic-demo'}
             isSaving={isSaving}
             degradedMode={parseResult.degraded_mode === true}
             onChange={(receipt) => setParseResult({ ...parseResult, receipt })}
@@ -290,6 +322,15 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
               <Button
                 type="button"
                 variant="outline"
+                onClick={previewSyntheticReceipt}
+                disabled={isParsing || isPreparingSample || isSaving}
+                className="bg-white"
+              >
+                Explore synthetic example
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => void trySampleReceipt()}
                 disabled={isParsing || isPreparingSample || isSaving || liveReady !== true || mockMode === true}
                 className="bg-white"
@@ -309,6 +350,9 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
             </div>
             <p className="mt-3 text-left text-sm text-slate-600">
               The sample image contains only fictional data. It is converted to PNG and sent for uncached, live provider extraction; any saved receipt stays in this browser on this device.
+            </p>
+            <p className="mt-2 text-left text-sm text-slate-600">
+              The synthetic example uses fixed fixture data. It does not call the receipt parse API or an AI provider, and edits are discarded when you close the preview.
             </p>
             {mockMode === true && (
               <p role="status" className="mt-2 text-sm text-slate-600">

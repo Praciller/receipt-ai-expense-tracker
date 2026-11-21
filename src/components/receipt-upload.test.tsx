@@ -229,6 +229,41 @@ describe('ReceiptUpload', () => {
     expect(repositoryCreate).not.toHaveBeenCalled();
   });
 
+  it('opens a synthetic preview without a provider, parse API request, or local save', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({
+        mock_ai_mode: false,
+        live_ready: false,
+        readiness_message: 'Live extraction is unavailable. Configure an image-capable provider before uploading receipts.',
+      }), { status: 200 }),
+    );
+
+    render(<ReceiptUpload />);
+    await screen.findByText(/configure an image-capable provider before uploading/i);
+
+    const syntheticButton = screen.getByRole('button', { name: /explore synthetic example/i });
+    expect(syntheticButton).toBeEnabled();
+    expect(screen.getByRole('button', { name: /try fictional sample receipt/i })).toBeDisabled();
+
+    fireEvent.click(syntheticButton);
+
+    expect(await screen.findByRole('heading', { name: /synthetic receipt demo/i })).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Synthetic Portfolio Cafe')).toBeInTheDocument();
+    expect(screen.getByText(/not AI output/i)).toBeInTheDocument();
+    expect(screen.getByText(/no image was sent to a provider/i)).toBeInTheDocument();
+    expect(screen.getByText(/preview only · nothing saved/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /save receipt/i })).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(repositoryCreate).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Shop name'), { target: { value: 'Temporary Demo Edit' } });
+    fireEvent.click(screen.getByRole('button', { name: /close preview/i }));
+    fireEvent.click(screen.getByRole('button', { name: /explore synthetic example/i }));
+    expect(await screen.findByDisplayValue('Synthetic Portfolio Cafe')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(repositoryCreate).not.toHaveBeenCalled();
+  });
+
   it('allows local mock review but blocks persistence without a provider result', async () => {
     vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(new Response(JSON.stringify({ mock_ai_mode: true }), { status: 200 }))

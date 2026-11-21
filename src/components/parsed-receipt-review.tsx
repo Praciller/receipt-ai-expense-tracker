@@ -12,6 +12,7 @@ interface ParsedReceiptReviewProps {
   receipt: ParsedReceipt;
   provider: string;
   model: string;
+  syntheticDemo?: boolean;
   isSaving: boolean;
   degradedMode?: boolean;
   onChange(receipt: ParsedReceipt): void;
@@ -23,6 +24,7 @@ export function ParsedReceiptReview({
   receipt,
   provider,
   model,
+  syntheticDemo = false,
   isSaving,
   degradedMode = false,
   onChange,
@@ -51,18 +53,22 @@ export function ParsedReceiptReview({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 id="review-title" className="text-xl font-semibold text-slate-950">
-            Review extracted receipt
+            {syntheticDemo ? 'Synthetic receipt demo' : 'Review extracted receipt'}
           </h2>
           <p className="mt-1 text-sm text-slate-600">
-            AI can misread receipts. Confirm every field before saving.
+            {syntheticDemo
+              ? 'This deterministic fixture demonstrates the review workflow; it is not AI output.'
+              : 'AI can misread receipts. Confirm every field before saving.'}
           </p>
           <p className="mt-2 max-w-2xl text-sm text-slate-600">
-            Saving stores this receipt and image in local browser storage on this device. Live extraction already sent the image to the external provider shown below.
+            {syntheticDemo
+              ? 'No image was sent to a provider. Edits are temporary, and closing this preview discards them.'
+              : 'Saving stores this receipt and image in local browser storage on this device. Live extraction already sent the image to the external provider shown below.'}
           </p>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
           <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-800">
-            {provider} · {model}
+            {syntheticDemo ? 'Synthetic fixture · no model call' : `${provider} · ${model}`}
           </span>
         </div>
       </div>
@@ -96,7 +102,7 @@ export function ParsedReceiptReview({
 
       <section aria-labelledby="source-evidence-title" className="rounded-lg border border-slate-200 bg-slate-50 p-4">
         <h3 id="source-evidence-title" className="font-semibold text-slate-900">
-          Source evidence
+          {syntheticDemo ? 'Fixed sample evidence' : 'Source evidence'}
         </h3>
         {receipt.evidence.length > 0 ? (
           <ul className="mt-2 space-y-2 text-sm text-slate-700">
@@ -109,7 +115,9 @@ export function ParsedReceiptReview({
           </ul>
         ) : (
           <p role="status" className="mt-2 text-sm text-amber-900">
-            No source text evidence was returned. Compare the extracted fields with the original image before saving.
+            {syntheticDemo
+              ? 'This fixture has no sample evidence text. Its fields are fixed demonstration data.'
+              : 'No source text evidence was returned. Compare the extracted fields with the original image before saving.'}
           </p>
         )}
       </section>
@@ -189,14 +197,16 @@ export function ParsedReceiptReview({
             ))}
           </select>
         </Field>
-        <Field label="Confidence">
-          <div className="field flex items-center justify-between bg-slate-50">
-            <span>{Math.round(receipt.confidence * 100)}%</span>
-            <span className="text-xs capitalize text-slate-500">
-              {receipt.parse_status.replace('_', ' ')}
-            </span>
-          </div>
-        </Field>
+        {!syntheticDemo && (
+          <Field label="Confidence">
+            <div className="field flex items-center justify-between bg-slate-50">
+              <span>{Math.round(receipt.confidence * 100)}%</span>
+              <span className="text-xs capitalize text-slate-500">
+                {receipt.parse_status.replace('_', ' ')}
+              </span>
+            </div>
+          </Field>
+        )}
       </div>
 
       <div>
@@ -303,11 +313,15 @@ export function ParsedReceiptReview({
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <Button type="button" variant="ghost" onClick={onCancel}>
-          Choose another image
+          {syntheticDemo ? 'Close preview' : 'Choose another image'}
         </Button>
-        <Button type="button" onClick={onSave} disabled={isSaving}>
-          {isSaving ? 'Saving…' : 'Save receipt'}
-        </Button>
+        {syntheticDemo ? (
+          <p className="self-center text-sm text-slate-600">Preview only · nothing saved</p>
+        ) : (
+          <Button type="button" onClick={onSave} disabled={isSaving}>
+            {isSaving ? 'Saving…' : 'Save receipt'}
+          </Button>
+        )}
       </div>
     </section>
   );

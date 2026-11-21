@@ -14,7 +14,7 @@ The public deployment requires live provider configuration; without it, image up
 
 [Repository](https://github.com/Praciller/receipt-ai-expense-tracker) · [Live demo](https://receipt-ai-expense-tracker-eta.vercel.app/) · [Dream Logs case study](https://dreamlogsdata.com/en/projects/receipt-ai-expense-tracker)
 
-**What this demonstrates:** a fictional sample image through live extraction and human review · deterministic reconciliation warnings · browser-local persistence and analytics.
+**What this demonstrates:** an always-available synthetic review preview · an optional fictional sample image through live extraction and human review · deterministic reconciliation warnings · browser-local persistence and analytics.
 
 **Boundary:** provider output is surfaced for human review and is never silently changed. Production never substitutes a synthetic receipt when inference is unavailable.
 
@@ -27,11 +27,11 @@ provides a synthetic, zero-cost local test path or a fictional sample image in t
 ## Public Demo Reviewer Path
 
 1. Open the [live demo](https://receipt-ai-expense-tracker-eta.vercel.app/).
-2. On Upload, choose **Try fictional sample receipt**. The public SVG is converted to PNG and sent through the same parse API as an upload, with caching and local mock output bypassed.
-3. Check the reported provider/model, compare the fields with the fictional image, and edit anything that needs correction.
-4. Save only after review, then inspect Receipts and Dashboard. Saved data stays in this browser on this device.
+2. Choose **Explore synthetic example** to inspect a checked-in deterministic fixture without an AI call or parse API request. Its fields are editable for the preview, and closing it discards the changes without saving.
+3. When live provider readiness is available, choose **Try fictional sample receipt**. The public SVG is converted to PNG and sent through the same parse API as an upload, with caching and local mock output bypassed.
+4. For live extraction, check the reported provider/model, compare fields with the fictional image, edit anything that needs correction, then save to this browser's local Receipts and Dashboard.
 
-The sample contains no real receipt data. The image is sent to an external AI provider. If live inference fails, the UI shows the error and does not replace it with fixture output.
+The sample image contains no real receipt data. The live path sends it to an external AI provider. If live inference fails, the UI shows the error and does not replace it with fixture output. The synthetic preview is a separate fixed example; its confidence/evidence fields must not be treated as an AI result.
 
 ## Provider Configuration and Readiness
 
