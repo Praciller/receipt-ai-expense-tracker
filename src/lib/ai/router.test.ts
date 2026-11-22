@@ -187,6 +187,43 @@ describe('parseReceiptImage', () => {
     expect(cache.get).not.toHaveBeenCalled();
   });
 
+  it('forces provider inference and bypasses both mock output and cached results', async () => {
+    vi.stubEnv('NODE_ENV', 'test');
+    vi.stubEnv('MOCK_AI_MODE', 'true');
+    const cache: ParseCache = {
+      get: vi.fn().mockResolvedValue({
+        receipt: safeReceipt(),
+        provider_used: 'cached-provider',
+        model_used: 'cached-model',
+        fallback_used: false,
+        cached: false,
+        degraded_mode: false,
+        attempts: [],
+      }),
+      set: vi.fn(),
+    };
+    const external = provider({
+      name: 'external',
+      supportsImageInput: true,
+      imageModels: ['external-model'],
+      imageResult: JSON.stringify(validReceipt),
+    });
+
+    const result = await parseReceiptImage(imageInput, {
+      providers: [external],
+      cache,
+      cacheEnabled: true,
+      forceLive: true,
+    });
+
+    expect(result.provider_used).toBe('external');
+    expect(result.model_used).toBe('external-model');
+    expect(result.cached).toBe(false);
+    expect(external.parseImage).toHaveBeenCalledOnce();
+    expect(cache.get).not.toHaveBeenCalled();
+    expect(cache.set).not.toHaveBeenCalled();
+  });
+
   it('returns valid cached data before calling external inference', async () => {
     vi.stubEnv('MOCK_AI_MODE', 'false');
     const cache: ParseCache = {

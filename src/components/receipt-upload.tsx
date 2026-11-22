@@ -4,12 +4,14 @@ import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { CheckCircle, Image as ImageIcon, Loader2, Upload } from 'lucide-react';
-import type { ParsedReceipt } from '@/lib/receipt';
+import { validateAndNormalizeReceipt, type ParsedReceipt } from '@/lib/receipt';
+import { loadSampleReceiptImage } from '@/lib/sample-receipt';
 import { getReceiptRepository } from '@/lib/storage/get-receipt-repository';
 import { ErrorState } from './error-state';
 import { ParsedReceiptReview } from './parsed-receipt-review';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import syntheticReceipt from '../../fixtures/synthetic-receipt.json';
 
 interface ReceiptUploadProps {
   onUploadSuccess?: () => void;
@@ -22,14 +24,17 @@ interface ParseResponse {
   fallback_used?: boolean;
   cached: boolean;
   degraded_mode?: boolean;
+  source?: 'provider' | 'synthetic-demo';
 }
 
 export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
   const [isParsing, setIsParsing] = useState(false);
+  const [isPreparingSample, setIsPreparingSample] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [preview, setPreview] = useState<string | null>(null);
+  const [isSampleReceipt, setIsSampleReceipt] = useState(false);
   const [imageBase64, setImageBase64] = useState('');
   const [imageMimeType, setImageMimeType] = useState('');
   const [parseResult, setParseResult] = useState<ParseResponse | null>(null);
@@ -57,7 +62,7 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
       });
   }, []);
 
-  const processFile = useCallback(async (file: File) => {
+  const processFile = useCallback(async (file: File, forceLive = false) => {
     setIsParsing(true);
     setError('');
     setSuccess('');
@@ -67,11 +72,15 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
       const dataUrl = await fileToBase64(file);
       const base64 = dataUrl.split(',')[1] ?? '';
       setPreview(dataUrl);
+      setIsSampleReceipt(forceLive);
       setImageBase64(base64);
       setImageMimeType(file.type);
 
       const formData = new FormData();
       formData.append('file', file);
+      if (forceLive) {
+        formData.append('force_live', 'true');
+      }
       const response = await fetch('/api/receipts/parse', {
         method: 'POST',
         body: formData,
@@ -81,7 +90,7 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
         throw new Error(data.error ?? 'AI could not parse this receipt.');
       }
 
-      setParseResult(data);
+      setParseResult({ ...data, source: 'provider' });
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : 'Failed to parse receipt.',
@@ -89,6 +98,43 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
     } finally {
       setIsParsing(false);
     }
+  }, []);
+
+  const trySampleReceipt = useCallback(async () => {
+    setIsPreparingSample(true);
+    setError('');
+    try {
+      const sample = await loadSampleReceiptImage();
+      setIsPreparingSample(false);
+      await processFile(sample, true);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not load the fictional sample receipt.');
+    } finally {
+      setIsPreparingSample(false);
+    }
+  }, [processFile]);
+
+  const previewSyntheticReceipt = useCallback(() => {
+    setError('');
+    setSuccess('');
+    const result = validateAndNormalizeReceipt(syntheticReceipt.expected);
+    if (!result.success) {
+      setError('The synthetic demo fixture is invalid. Refresh the page and try again.');
+      return;
+    }
+
+    setPreview(null);
+    setIsSampleReceipt(false);
+    setImageBase64('');
+    setImageMimeType('');
+    setParseResult({
+      receipt: result.data,
+      provider_used: 'Synthetic fixture',
+      model_used: 'Fixed example · no model call',
+      cached: false,
+      degraded_mode: false,
+      source: 'synthetic-demo',
+    });
   }, []);
 
   const onDrop = useCallback(
@@ -115,11 +161,15 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
     },
     maxFiles: 1,
     maxSize: 5 * 1024 * 1024,
-    disabled: isParsing || isSaving || (liveReady !== true && mockMode !== true),
+    disabled: isParsing || isPreparingSample || isSaving || (liveReady !== true && mockMode !== true),
     noClick: true,
   });
 
   const saveReceipt = async () => {
+    if (parseResult?.source === 'synthetic-demo') {
+      setError('Synthetic demo examples cannot be saved to expense history.');
+      return;
+    }
     if (
       !parseResult?.provider_used ||
       !parseResult.model_used ||
@@ -142,7 +192,9 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
       setSuccess('Saved locally to expense history.');
       setParseResult(null);
       setPreview(null);
+      setIsSampleReceipt(false);
       setImageBase64('');
+      setImageMimeType('');
       onUploadSuccess?.();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Failed to save receipt.');
@@ -154,6 +206,7 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
   const reset = () => {
     setParseResult(null);
     setPreview(null);
+    setIsSampleReceipt(false);
     setImageBase64('');
     setImageMimeType('');
     setError('');
@@ -177,19 +230,20 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
               ? 'Checking live provider readiness...'
               : mockMode
                 ? 'Local mock mode is explicitly enabled for development. Use synthetic test images only.'
-                : liveReady
-                  ? `Live image extraction is ready. ${readinessMessage}`
-                  : readinessMessage}
+                : readinessMessage}
           </p>
-          <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-950">
-            When live extraction is enabled, uploaded images are sent to the configured external AI provider. Do not upload sensitive receipts; use non-sensitive images only.
-          </p>
+          {parseResult?.source !== 'synthetic-demo' && (
+            <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-950">
+              Live extraction sends the selected image, including the fictional sample, to the configured external AI provider. Do not upload sensitive receipts; use non-sensitive images only.
+            </p>
+          )}
         </div>
         {parseResult ? (
           <ParsedReceiptReview
             receipt={parseResult.receipt}
             provider={parseResult.provider_used!}
             model={parseResult.model_used!}
+            syntheticDemo={parseResult.source === 'synthetic-demo'}
             isSaving={isSaving}
             degradedMode={parseResult.degraded_mode === true}
             onChange={(receipt) => setParseResult({ ...parseResult, receipt })}
@@ -214,7 +268,7 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
               <div className="relative mx-auto max-w-sm overflow-hidden rounded-lg bg-white">
                 <Image
                   src={preview}
-                  alt="Selected receipt preview"
+                  alt={isSampleReceipt ? 'Fictional sample receipt preview' : 'Selected receipt preview'}
                   width={640}
                   height={800}
                   unoptimized
@@ -250,19 +304,60 @@ export function ReceiptUpload({ onUploadSuccess }: ReceiptUploadProps) {
                   {mockMode === true
                     ? 'Local mock mode returns synthetic test data.'
                     : liveReady === true
-                      ? 'A live provider processes the image; review the result before saving.'
+                      ? 'A configured provider will attempt to process the image; review the result before saving.'
                       : 'Image upload is disabled until live extraction is configured.'}
                 </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={open}
-                  disabled={isParsing || isSaving || (liveReady !== true && mockMode !== true)}
-                  className="mt-5 bg-white"
-                >
-                  Select image
-                </Button>
               </div>
+            )}
+            <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={open}
+                disabled={isParsing || isPreparingSample || isSaving || (liveReady !== true && mockMode !== true)}
+                className="bg-white"
+              >
+                {preview ? 'Choose another image' : 'Select image'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={previewSyntheticReceipt}
+                disabled={isParsing || isPreparingSample || isSaving}
+                className="bg-white"
+              >
+                Explore synthetic example
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void trySampleReceipt()}
+                disabled={isParsing || isPreparingSample || isSaving || liveReady !== true || mockMode === true}
+                className="bg-white"
+              >
+                {isPreparingSample ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                    Preparing sample…
+                  </>
+                ) : (
+                  <>
+                    <ImageIcon className="mr-2 h-4 w-4" aria-hidden="true" />
+                    Try fictional sample receipt
+                  </>
+                )}
+              </Button>
+            </div>
+            <p className="mt-3 text-left text-sm text-slate-600">
+              The sample image contains only fictional data. It is converted to PNG and sent for uncached, live provider extraction; any saved receipt stays in this browser on this device.
+            </p>
+            <p className="mt-2 text-left text-sm text-slate-600">
+              The synthetic example uses fixed fixture data. It does not call the receipt parse API or an AI provider, and edits are discarded when you close the preview.
+            </p>
+            {mockMode === true && (
+              <p role="status" className="mt-2 text-sm text-slate-600">
+                Live sample extraction is disabled while local mock mode is active.
+              </p>
             )}
           </div>
         )}

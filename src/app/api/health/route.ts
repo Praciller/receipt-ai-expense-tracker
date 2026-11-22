@@ -9,7 +9,7 @@ export function GET() {
     ok: process.env.NODE_ENV !== 'production' || liveReady,
     live_ready: liveReady,
     readiness_message: liveReady
-      ? 'Live image extraction is configured.'
+      ? 'Live image provider configuration is present. This check does not test inference success.'
       : 'Live extraction is unavailable. Configure a server-side image provider before uploading receipts.',
     mock_ai_mode: process.env.NODE_ENV !== 'production' && process.env.MOCK_AI_MODE === 'true',
     provider_priority: providers.map((provider) => provider.name),
@@ -19,7 +19,9 @@ export function GET() {
       .filter((provider) => provider.repairModel)
       .map((provider) => provider.name),
     cache_enabled: process.env.ENABLE_AI_PARSE_CACHE !== 'false',
-    safe_fallback_enabled: process.env.ENABLE_SAFE_FALLBACK !== 'false',
+    safe_fallback_enabled:
+      process.env.NODE_ENV !== 'production' &&
+      process.env.ENABLE_SAFE_FALLBACK !== 'false',
     storage: process.env.NEXT_PUBLIC_STORAGE_MODE ?? 'indexeddb',
   });
 }

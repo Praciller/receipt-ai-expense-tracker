@@ -1,6 +1,6 @@
 # Receipt AI Expense Tracker
 
-Local-first expense tracker for Thai and English receipts. Production requires a configured live image provider and fails closed when none is ready. Users review a genuine provider result before confirmed receipts are stored in browser IndexedDB. Synthetic fixtures are for opted-in local development and evaluation only.
+Local-first expense tracker for Thai and English receipts. Production requires a configured live image provider and fails closed when no image route is configured. Try a clearly labeled fictional receipt from the upload screen; it goes through uncached live provider inference, then human review. Confirmed receipts are stored in browser IndexedDB. Deterministic output fixtures are for opted-in local development and evaluation only.
 
 Live deployment: [receipt-ai-expense-tracker-eta.vercel.app](https://receipt-ai-expense-tracker-eta.vercel.app)
 
@@ -14,7 +14,7 @@ The public deployment requires live provider configuration; without it, image up
 
 [Repository](https://github.com/Praciller/receipt-ai-expense-tracker) · [Live demo](https://receipt-ai-expense-tracker-eta.vercel.app/) · [Dream Logs case study](https://dreamlogsdata.com/en/projects/receipt-ai-expense-tracker)
 
-**What this demonstrates:** extraction-to-review workflow · deterministic reconciliation warnings · browser-local persistence and analytics.
+**What this demonstrates:** an always-available synthetic review preview · an optional fictional sample image through live extraction and human review · deterministic reconciliation warnings · browser-local persistence and analytics.
 
 **Boundary:** provider output is surfaced for human review and is never silently changed. Production never substitutes a synthetic receipt when inference is unavailable.
 
@@ -22,18 +22,22 @@ The public deployment requires live provider configuration; without it, image up
 
 Receipt extraction crosses several trust boundaries: image upload, AI parsing, financial totals,
 date normalization, human review, and local storage. This project keeps each boundary explicit and
-provides a synthetic, zero-cost **local test path only** so reviewers can validate behavior without uploading real
-financial documents. Public production never substitutes fixture output for live inference.
+provides a synthetic, zero-cost local test path or a fictional sample image in the public demo. The public sample goes through live provider inference; public production never substitutes fixture output for live inference.
 
-## 30-Second Reviewer Path
+## Public Demo Reviewer Path
 
-1. Scan the upload and dashboard screenshots.
-2. Run the zero-cost local review with `MOCK_AI_MODE=true`.
-3. Inspect [`fixtures/synthetic-receipt.json`](fixtures/synthetic-receipt.json) and
-   [`reports/extraction/summary.md`](reports/extraction/summary.md).
-4. Review provider routing, storage architecture, and security/privacy docs.
+1. Open the [live demo](https://receipt-ai-expense-tracker-eta.vercel.app/).
+2. Choose **Explore synthetic example** to inspect a checked-in deterministic fixture without an AI call or parse API request. Its fields are editable for the preview, and closing it discards the changes without saving.
+3. When live provider readiness is available, choose **Try fictional sample receipt**. The public SVG is converted to PNG and sent through the same parse API as an upload, with caching and local mock output bypassed.
+4. For live extraction, check the reported provider/model, compare fields with the fictional image, edit anything that needs correction, then save to this browser's local Receipts and Dashboard.
 
-The production UI has no sample receipt action. It reports provider readiness and disables upload when live image inference is unavailable.
+The sample image contains no real receipt data. The live path sends it to an external AI provider. If live inference fails, the UI shows the error and does not replace it with fixture output. The synthetic preview is a separate fixed example; its confidence/evidence fields must not be treated as an AI result.
+
+## Provider Configuration and Readiness
+
+The code's default order is the configured external provider first, followed by Groq. The external provider is named `gemini` when its base URL contains `generativelanguage.googleapis.com`; otherwise it is named `external`. If both routes are configured, set `AI_PROVIDER_PRIORITY=groq` to reverse their order. These are code defaults; deployment environment variables can change the order and available providers.
+
+On 2026-11-15, the public `/api/health` endpoint reported configured order `groq → gemini`, image routes `groq → gemini`, and JSON-repair route `gemini`. This is a dated deployment snapshot and can change. Health/readiness checks only report configuration presence; they do not verify credentials, quota, provider availability, or successful image inference. A successful parse reports the provider and model actually returned for that run.
 
 ## Product Flow
 
@@ -65,7 +69,7 @@ Amount flow is intentionally `AI extraction -> normalization -> deterministic re
 | --- | --- |
 | App | Next.js 16, React 19, TypeScript |
 | Styling | Tailwind CSS 4 |
-| Inference | Gemini 3.8 Flash (primary) and Groq Qwen 3.8 27B (optional fallback), each with its own server-side key; opt-in local synthetic tests only |
+| Inference | Configurable Gemini/OpenAI-compatible provider and Groq Qwen 3.8 27B vision provider, each with its own server-side key; ordering follows code defaults and deployment configuration |
 | Validation | Zod plus domain normalization |
 | Persistence | IndexedDB through Dexie.js |
 | Analytics | Client-side aggregation and Recharts |
@@ -75,7 +79,7 @@ Amount flow is intentionally `AI extraction -> normalization -> deterministic re
 
 | Area | Evidence |
 | --- | --- |
-| AI workflow | Separate Gemini/Groq keys, provider readiness, bounded failover, production fail-closed behavior, and local-only mock evaluation |
+| AI workflow | Separate server-side provider keys, configured route status, bounded failover, production fail-closed behavior, uncached live public sample, and local-only mock evaluation |
 | Validation | Zod/domain checks for dates, totals, currencies, exact-decimal item math, and review warnings |
 | Evaluation | Nine synthetic extraction cases with schema, reconciliation, and field-level metrics |
 | Storage | Browser-local IndexedDB repository with no default cloud database |
@@ -123,6 +127,8 @@ EXTERNAL_AI_FALLBACK_MODEL=
 EXTERNAL_AI_JSON_REPAIR_MODEL=
 EXTERNAL_AI_SUPPORTS_IMAGE_INPUT=true
 ```
+
+For provider ordering and the dated public health observation, see [Provider Configuration and Readiness](#provider-configuration-and-readiness). Keep inference credentials in encrypted server-side environment variables only.
 
 Never expose an inference credential through a public frontend variable. For exact Vercel configuration and public endpoint limits, see [`docs/production-live-inference.md`](docs/production-live-inference.md). See [`docs/model_routing.md`](docs/model_routing.md) for routing and validation behavior.
 

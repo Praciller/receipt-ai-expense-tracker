@@ -74,6 +74,7 @@ interface ParseReceiptImageOptions extends RouterOptions {
   providers?: ReceiptAiProvider[];
   cache?: ParseCache;
   cacheEnabled?: boolean;
+  forceLive?: boolean;
 }
 
 const defaultSleep = (milliseconds: number) =>
@@ -254,7 +255,11 @@ export async function parseReceiptImage(
   input: ReceiptImageInput,
   options: ParseReceiptImageOptions = {},
 ): Promise<ParsedReceiptResult> {
-  if (process.env.NODE_ENV !== 'production' && process.env.MOCK_AI_MODE === 'true') {
+  if (
+    !options.forceLive &&
+    process.env.NODE_ENV !== 'production' &&
+    process.env.MOCK_AI_MODE === 'true'
+  ) {
     return {
       receipt: createMockReceipt(),
       provider_used: 'mock',
@@ -275,8 +280,9 @@ export async function parseReceiptImage(
   }
 
   const providers = options.providers ?? getConfiguredProviders();
-  const cacheEnabled =
-    options.cacheEnabled ?? process.env.ENABLE_AI_PARSE_CACHE !== 'false';
+  const cacheEnabled = options.forceLive
+    ? false
+    : (options.cacheEnabled ?? process.env.ENABLE_AI_PARSE_CACHE !== 'false');
   const cache =
     options.cache ??
     getFileParseCache(process.env.AI_PARSE_CACHE_DIR ?? '.cache/ai');
@@ -300,7 +306,11 @@ export async function parseReceiptImage(
     }
   }
 
-  const result = await parseWithProviders(input, providers, options);
+  const result = await parseWithProviders(
+    input,
+    providers,
+    options.forceLive ? { ...options, safeFallback: false } : options,
+  );
   if (cacheEnabled && result.provider_used !== 'safe-fallback') {
     const ttlSeconds = Math.max(
       1,
